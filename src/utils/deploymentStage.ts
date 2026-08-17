@@ -27,6 +27,7 @@ const STAGE_CONFIG: Record<DeploymentStage, Omit<DeploymentStageInfo, 'stage'>> 
 
 export function getDeploymentStage(): DeploymentStageInfo {
 	const { hostname } = window.location
+	const vercelEnv = import.meta.env.VITE_VERCEL_ENV as string | undefined
 
 	if (hostname.endsWith('github.io')) {
 		return { stage: 'github-pages', ...STAGE_CONFIG['github-pages'] }
@@ -35,6 +36,10 @@ export function getDeploymentStage(): DeploymentStageInfo {
 	if (hostname === 'localhost' || hostname === '127.0.0.1') {
 		const stage: DeploymentStage = import.meta.env.DEV ? 'local-dev' : 'preview'
 		return { stage, ...STAGE_CONFIG[stage] }
+	}
+
+	if (vercelEnv === 'preview') {
+		return { stage: 'preview', ...STAGE_CONFIG.preview }
 	}
 
 	return { stage: 'production', ...STAGE_CONFIG.production }

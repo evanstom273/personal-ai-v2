@@ -12,6 +12,7 @@ import type { ChatSettings } from '@/types/serverChat'
 import type { ConversationRecord, StoredMessage, UserPreferences } from '@/storage/types'
 import type { ChatInputMethod, ChatSubmitPayload } from '@/types/chat'
 import type { ChatMessage } from '@/types/serverChat'
+import { getConfiguredAiName } from '@/services/gemini/systemInstruction'
 import {
 	notifyGenerationComplete,
 	requestNotificationPermission,
@@ -253,7 +254,7 @@ export function useChatGeneration({
 					})
 				}
 
-				const aiName = preferences.aiName.trim() || 'Personal AI'
+				const aiName = getConfiguredAiName(preferences)
 				if (!isChatRouteRef.current) {
 					setCompletionNotice(`${aiName} finished replying.`)
 				}

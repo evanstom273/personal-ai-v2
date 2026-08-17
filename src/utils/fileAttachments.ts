@@ -50,7 +50,12 @@ export function isTextDocumentFile(file: File): boolean {
 }
 
 export function isUploadableDocumentFile(file: File): boolean {
-	return isTextDocumentFile(file) || isPdfFile(file)
+	return (
+		isTextDocumentFile(file) ||
+		isPdfFile(file) ||
+		file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+		/\.docx$/i.test(file.name)
+	)
 }
 
 export async function readUploadableDocumentContent(file: File): Promise<string> {
@@ -59,7 +64,23 @@ export async function readUploadableDocumentContent(file: File): Promise<string>
 		return extractPdfText(file)
 	}
 
+	if (
+		file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+		/\.docx$/i.test(file.name)
+	) {
+		return extractDocxText(file)
+	}
+
 	return readTextFile(file)
+}
+
+/** Read text from a library or chat document upload (pdf, docx, text, markdown, etc.). */
+export async function readDocumentFileContent(file: File): Promise<string> {
+	if (isUploadableDocumentFile(file)) {
+		return readUploadableDocumentContent(file)
+	}
+
+	throw new Error(getUnsupportedFileMessage(file))
 }
 
 export function isImageFile(file: File): boolean {

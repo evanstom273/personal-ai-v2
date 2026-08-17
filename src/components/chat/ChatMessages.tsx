@@ -38,6 +38,7 @@ interface ChatMessagesProps {
 	isGenerating: boolean
 	generationActivity?: ChatGenerationActivity | null
 	aiName: string
+	userDisplayName: string
 	editingMessageId?: string | null
 	onEditUserMessage?: (message: StoredMessage) => void
 	onConfirmDelete: (
@@ -60,6 +61,7 @@ export function ChatMessages({
 	isGenerating,
 	generationActivity = null,
 	aiName,
+	userDisplayName,
 	editingMessageId = null,
 	onEditUserMessage,
 	onConfirmDelete,
@@ -198,9 +200,8 @@ export function ChatMessages({
 					</div>
 					<h2 className="text-lg font-semibold">Your conversation</h2>
 					<p className="text-sm text-muted-foreground">
-						One continuous thread with {aiName}. Switch between Gemini 3.6
-						Flash and 3.1 Pro, ask for document help, or try phrases like
-						&quot;generate an image of…&quot; or &quot;generate music&quot;.
+						One continuous thread with {aiName}. Mention documents with @, or
+						upload files from Library → Documents.
 					</p>
 				</div>
 			</div>
@@ -216,6 +217,7 @@ export function ChatMessages({
 							key={message.id}
 							message={message}
 							aiName={aiName}
+							userDisplayName={userDisplayName}
 							isEditing={editingMessageId === message.id}
 							onEditUserMessage={onEditUserMessage}
 							editDisabled={isGenerating}
@@ -237,6 +239,7 @@ export function ChatMessages({
 								createdAt: Date.now(),
 							}}
 							aiName={aiName}
+							userDisplayName={userDisplayName}
 							onConfirmDelete={onConfirmDelete}
 							onCancelDelete={onCancelDelete}
 							isStreaming
@@ -274,6 +277,7 @@ export function ChatMessages({
 function MessageRow({
 	message,
 	aiName,
+	userDisplayName,
 	onEditUserMessage,
 	editDisabled = false,
 	isEditing = false,
@@ -291,6 +295,7 @@ function MessageRow({
 }: {
 	message: StoredMessage
 	aiName: string
+	userDisplayName: string
 	onEditUserMessage?: (message: StoredMessage) => void
 	editDisabled?: boolean
 	isEditing?: boolean
@@ -329,7 +334,7 @@ function MessageRow({
 					isUser ? 'w-full max-w-[88%] flex-row-reverse' : 'w-full',
 				)}
 			>
-				<MessageAvatar isUser={isUser} aiName={aiName} />
+				<MessageAvatar isUser={isUser} aiName={aiName} userDisplayName={userDisplayName} />
 
 				<div className={cn('min-w-0 flex-1', isUser && 'flex flex-col items-end')}>
 					<div
@@ -339,7 +344,7 @@ function MessageRow({
 						)}
 					>
 						<p className="text-xs font-medium text-muted-foreground">
-							{isUser ? 'You' : aiName}
+							{isUser ? userDisplayName : aiName}
 						</p>
 						<span className="text-xs text-muted-foreground/80">
 							{isStreaming ? 'Now' : formatMessageTime(message.createdAt)}
@@ -526,9 +531,11 @@ function MessageRow({
 function MessageAvatar({
 	isUser,
 	aiName,
+	userDisplayName,
 }: {
 	isUser: boolean
 	aiName: string
+	userDisplayName: string
 }) {
 	return (
 		<div
@@ -539,7 +546,7 @@ function MessageAvatar({
 					: 'bg-primary/15 text-primary',
 			)}
 			aria-hidden
-			title={isUser ? 'You' : aiName}
+			title={isUser ? userDisplayName : aiName}
 		>
 			{isUser ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
 		</div>

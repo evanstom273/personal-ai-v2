@@ -6,7 +6,7 @@ import {
 	useTextToSpeechContext,
 } from '@/providers/ChatProvider'
 import { confirmDocumentDeletion } from '@/services/gemini/documentTools'
-import { getConfiguredAiName } from '@/services/gemini/systemInstruction'
+import { getConfiguredAiName, getConfiguredUserName } from '@/services/gemini/systemInstruction'
 import type { StoredMessage } from '@/storage/types'
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -50,6 +50,7 @@ export function ChatPage() {
 	const [editingMessage, setEditingMessage] = useState<StoredMessage | null>(null)
 
 	const aiName = getConfiguredAiName(preferences)
+	const userDisplayName = getConfiguredUserName(preferences)
 	const chatReady = serverOnline
 	const activeModelId =
 		conversation?.modelId ?? preferences.defaultModelId
@@ -205,6 +206,7 @@ export function ChatPage() {
 				isGenerating={isGenerating}
 				generationActivity={generationActivity}
 				aiName={aiName}
+				userDisplayName={userDisplayName}
 				editingMessageId={editingMessage?.id ?? null}
 				onEditUserMessage={handleEditUserMessage}
 				onConfirmDelete={handleConfirmDelete}

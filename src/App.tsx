@@ -24,12 +24,24 @@ const STORAGE_KEYS = {
   ACTIVE_MODEL: 'personal_ai_active_model',
 }
 
+function loadSettingsFromStorage(): ChatSettings {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.SETTINGS)
+    if (raw) {
+      return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) }
+    }
+  } catch (e) {
+    console.error('Failed to parse saved settings', e)
+  }
+  return DEFAULT_SETTINGS
+}
+
 function App() {
   const [models, setModels] = useState<LocalModel[]>(FALLBACK_MODELS)
   const [selectedModel, setSelectedModel] = useState<string>('qwen3.5:4b')
   const [sessions, setSessions] = useState<ChatSession[]>([])
   const [activeSessionId, setActiveSessionId] = useState<string>('')
-  const [settings, setSettings] = useState<ChatSettings>(DEFAULT_SETTINGS)
+  const [settings, setSettings] = useState<ChatSettings>(loadSettingsFromStorage)
 
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(true)
   const [settingsOpen, setSettingsOpen] = useState<boolean>(false)
@@ -39,6 +51,19 @@ function App() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const initialLoadDoneRef = useRef(false)
   const skipHostRefreshRef = useRef(true)
+  const skipSettingsPersistRef = useRef(true)
+
+  const persistSettings = (nextSettings: ChatSettings) => {
+    localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(nextSettings))
+  }
+
+  const updateSettings = (partial: Partial<ChatSettings>) => {
+    setSettings((prev) => {
+      const next = { ...prev, ...partial }
+      persistSettings(next)
+      return next
+    })
+  }
 
   const applyFetchedModels = (fetchedModels: LocalModel[], preferredModel?: string | null) => {
     setModels(fetchedModels)
@@ -51,26 +76,15 @@ function App() {
     }
   }
 
-  // 1. Initial Load: Settings, Models, Sessions
+  // 1. Initial Load: Models, Sessions
   useEffect(() => {
-    const savedSettingsRaw = localStorage.getItem(STORAGE_KEYS.SETTINGS)
     const savedModel = localStorage.getItem(STORAGE_KEYS.ACTIVE_MODEL)
-    let parsedSettings = DEFAULT_SETTINGS
-
-    if (savedSettingsRaw) {
-      try {
-        parsedSettings = { ...DEFAULT_SETTINGS, ...JSON.parse(savedSettingsRaw) }
-        setSettings(parsedSettings)
-      } catch (e) {
-        console.error('Failed to parse saved settings', e)
-      }
-    }
 
     if (savedModel) {
       setSelectedModel(savedModel)
     }
 
-    fetchLocalModels(parsedSettings.ollamaHost).then((fetchedModels) => {
+    fetchLocalModels(settings.ollamaHost).then((fetchedModels) => {
       applyFetchedModels(fetchedModels, savedModel)
     })
 
@@ -106,9 +120,13 @@ function App() {
     }
   }, [sessions])
 
-  // 3. Persist Settings & Active Model
+  // 3. Persist Settings (after mount — never overwrite saved settings on first render)
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings))
+    if (skipSettingsPersistRef.current) {
+      skipSettingsPersistRef.current = false
+      return
+    }
+    persistSettings(settings)
   }, [settings])
 
   useEffect(() => {
@@ -470,7 +488,7 @@ function App() {
           onOpenSettings={() => setSettingsOpen(true)}
           onClearCurrentChat={handleClearCurrentChat}
           settings={settings}
-          onUpdateSettings={(newSettings) => setSettings({ ...settings, ...newSettings })}
+          onUpdateSettings={updateSettings}
           hasMessages={messages.length > 0}
         />
 
@@ -507,7 +525,7 @@ function App() {
           models={models}
           onSelectModel={handleSelectModel}
           settings={settings}
-          onUpdateSettings={(newSettings) => setSettings({ ...settings, ...newSettings })}
+          onUpdateSettings={updateSettings}
         />
       </div>
 
@@ -518,7 +536,7 @@ function App() {
         settings={settings}
         onSaveSettings={(newSettings) => {
           setSettings(newSettings)
-          localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(newSettings))
+          persistSettings(newSettings)
         }}
         onModelsRefresh={(fetchedModels) => {
           setModels(fetchedModels)

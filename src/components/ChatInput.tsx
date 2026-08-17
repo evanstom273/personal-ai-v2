@@ -129,7 +129,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 			<div className="w-full max-w-3xl mx-auto px-3 pt-2 pb-3">
 				<div className="relative rounded-2xl bg-slate-900/90 border border-slate-800 focus-within:border-cyan-500/50 shadow-2xl shadow-black/80 transition-all">
 					{uploadError && (
-						<div className="px-3 pt-3 text-[11px] text-rose-300 bg-rose-500/10 border-b border-rose-500/20">
+						<div className="px-3 pt-3 text-[9px] text-rose-300 bg-rose-500/10 border-b border-rose-500/20">
 							{uploadError}
 						</div>
 					)}
@@ -142,8 +142,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 									className="inline-flex items-center gap-2 px-3 py-1 rounded-xl bg-slate-800 text-xs text-slate-200 border border-slate-700"
 								>
 									<FileText className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-									<span className="font-medium max-w-[150px] truncate">{file.name}</span>
-									<span className="text-[10px] text-slate-400 shrink-0">
+									<span className="font-medium max-w-[120px] truncate">{file.name}</span>
+									<span className="text-[8px] text-slate-400 shrink-0">
 										({Math.round(file.size / 1024)} KB)
 									</span>
 									<button
@@ -214,7 +214,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 											>
 												<Sparkles className="w-4 h-4 text-cyan-400" />
 												<div className="flex-1 min-w-0 text-left">
-													<span className="block text-slate-400 text-[11px]">Model</span>
+													<span className="block text-slate-400 text-[9px]">Model</span>
 													<span className="font-medium truncate">{selectedModel}</span>
 												</div>
 												<ChevronRight className="w-4 h-4 text-slate-500 shrink-0" />
@@ -234,13 +234,13 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 													<Zap className="w-4 h-4 text-amber-400" />
 												)}
 												<div className="flex-1 text-left">
-													<span className="block text-slate-400 text-[11px]">Reasoning</span>
+													<span className="block text-slate-400 text-[9px]">Reasoning</span>
 													<span className="font-medium">
 														{settings.enableThinking ? 'Thinking mode' : 'Fast mode'}
 													</span>
 												</div>
 												<span
-													className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+													className={`text-[8px] font-semibold px-2 py-0.5 rounded-full border ${
 														settings.enableThinking
 															? 'text-purple-300 border-purple-500/30 bg-purple-500/10'
 															: 'text-amber-300 border-amber-500/30 bg-amber-500/10'
@@ -310,7 +310,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 						</div>
 					</div>
 
-					<div className="px-3 py-1 border-t border-slate-800/40 flex items-center justify-between text-[10px] sm:text-[11px] text-slate-500">
+					<div className="px-3 py-1 border-t border-slate-800/40 flex items-center justify-between text-[8px] sm:text-[9px] text-slate-500">
 						<div className="flex items-center gap-1.5 min-w-0">
 							<Sparkles className="w-3 h-3 text-cyan-400 shrink-0" />
 							<span className="truncate">

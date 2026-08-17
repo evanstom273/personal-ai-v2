@@ -20,7 +20,7 @@ export const ModelPickerList: React.FC<ModelPickerListProps> = ({
 			<span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
 				Local Models
 			</span>
-			<span className="inline-flex items-center gap-1 text-[10px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full font-medium">
+			<span className="inline-flex items-center gap-1 text-[8px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full font-medium">
 				<span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
 				Ollama
 			</span>
@@ -47,12 +47,12 @@ export const ModelPickerList: React.FC<ModelPickerListProps> = ({
 							<div className="flex items-center gap-2">
 								<span className="font-semibold text-sm">{m.name}</span>
 								{m.details?.parameter_size && (
-									<span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-800 border border-slate-700 text-slate-400">
+									<span className="text-[8px] font-mono px-1.5 py-0.2 rounded bg-slate-800 border border-slate-700 text-slate-400">
 										{m.details.parameter_size}
 									</span>
 								)}
 							</div>
-							<p className="text-[11px] text-slate-500 mt-0.5">
+							<p className="text-[9px] text-slate-500 mt-0.5">
 								{m.details?.quantization_level
 									? `Quant: ${m.details.quantization_level}`
 									: 'Local Model'}
@@ -68,7 +68,7 @@ export const ModelPickerList: React.FC<ModelPickerListProps> = ({
 		</div>
 
 		<div className="px-3 py-2 border-t border-slate-800/60 flex items-center text-slate-400 text-xs bg-slate-950/40">
-			<span className="flex items-center gap-1.5 text-[11px]">
+			<span className="flex items-center gap-1.5 text-[9px]">
 				<HardDrive className="w-3.5 h-3.5 text-slate-500" />
 				Path: <code className="text-cyan-400 font-mono">E:\models</code>
 			</span>

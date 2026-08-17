@@ -117,18 +117,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="p-4 flex items-center justify-between border-b border-slate-900">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-500 via-indigo-500 to-purple-500 p-0.5 shadow-lg shadow-cyan-500/20">
-              <div className="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center">
+              <div className="w-full h-full bg-slate-950 rounded-[8px] flex items-center justify-center">
                 <Bot className="w-5 h-5 text-cyan-400" />
               </div>
             </div>
             <div>
               <h1 className="font-bold text-slate-100 text-sm tracking-tight flex items-center gap-1.5">
                 Personal AI
-                <span className="text-[10px] font-medium px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                <span className="text-[8px] font-medium px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
                   Local
                 </span>
               </h1>
-              <p className="text-[11px] text-slate-400">Powered by Ollama</p>
+              <p className="text-[9px] text-slate-400">Powered by Ollama</p>
             </div>
           </div>
 
@@ -153,7 +153,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <Plus className="w-4 h-4 transition-transform group-hover:rotate-90" />
               <span>New Chat</span>
             </div>
-            <kbd className="hidden sm:inline-block text-[10px] font-mono px-1.5 py-0.5 bg-black/20 rounded border border-white/10 text-cyan-100">
+            <kbd className="hidden sm:inline-block text-[8px] font-mono px-1.5 py-0.5 bg-black/20 rounded border border-white/10 text-cyan-100">
               ⌘N
             </kbd>
           </button>
@@ -187,12 +187,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <div className="text-center py-8 text-slate-400 text-xs">
               <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-30 text-slate-400" />
               <p>No chat history yet</p>
-              <p className="text-[10px] text-slate-400 mt-1">Start a conversation above!</p>
+              <p className="text-[8px] text-slate-400 mt-1">Start a conversation above!</p>
             </div>
           ) : (
             grouped.map((group) => (
               <div key={group.label} className="space-y-1">
-                <h3 className="px-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                <h3 className="px-2 text-[8px] font-bold uppercase tracking-wider text-slate-400">
                   {group.label}
                 </h3>
                 {group.items.map((session) => {
@@ -277,11 +277,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <div className="flex items-center gap-2">
               <HardDrive className="w-4 h-4 text-cyan-400" />
               <div>
-                <p className="text-[11px] font-semibold text-slate-200">Local Directory</p>
-                <code className="text-[10px] text-cyan-400 font-mono">E:\models</code>
+                <p className="text-[9px] font-semibold text-slate-200">Local Directory</p>
+                <code className="text-[8px] text-cyan-400 font-mono">E:\models</code>
               </div>
             </div>
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono">
+            <span className="text-[8px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono">
               {models.length} models
             </span>
           </div>
@@ -294,7 +294,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <Sliders className="w-3.5 h-3.5 text-slate-400" />
               <span>Model Parameters</span>
             </span>
-            <span className="text-[11px] font-mono text-slate-400">{selectedModel}</span>
+            <span className="text-[9px] font-mono text-slate-400">{selectedModel}</span>
           </button>
         </div>
       </aside>

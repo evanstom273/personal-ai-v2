@@ -34,7 +34,7 @@ export const DeploymentStageBadge: React.FC = () => {
 
 	return (
 		<div
-			className={`inline-flex items-center gap-1 px-1.5 sm:px-2 py-1 rounded-lg border text-[10px] sm:text-xs font-semibold ${styles.badge}`}
+			className={`inline-flex items-center gap-1 px-1.5 sm:px-2 py-1 rounded-lg border text-[8px] sm:text-xs font-semibold ${styles.badge}`}
 			title={description}
 		>
 			<span className={`w-1.5 h-1.5 rounded-full shrink-0 ${styles.dot}`} />

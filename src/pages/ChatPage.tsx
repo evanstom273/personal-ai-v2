@@ -164,18 +164,6 @@ export function ChatPage() {
 				/>
 			</header>
 
-			<div className="flex shrink-0 items-center justify-between gap-2 border-b border-border/60 px-3 py-2 md:hidden">
-				<span className="truncate text-xs text-muted-foreground">
-					Model: <span className="font-medium text-foreground">{activeModelId}</span>
-				</span>
-				<OllamaChatModelSelector
-					value={activeModelId}
-					onChange={(modelId) => {
-						void handleSelectModel(modelId)
-					}}
-				/>
-			</div>
-
 			{!chatReady ? (
 				<div className="shrink-0 border-b border-border bg-secondary/40 px-4 py-2 text-sm md:px-6">
 					<span className="text-muted-foreground">PersonalAI server offline. </span>

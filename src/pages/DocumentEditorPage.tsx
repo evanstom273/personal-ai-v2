@@ -1,6 +1,7 @@
 import { ArrowLeft, LayoutTemplate, Lock, Play } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { KnowledgeNotePanel } from '@/components/knowledge/KnowledgeNotePanel'
 import { DocumentEditor } from '@/components/documents/DocumentEditor'
 import { DocumentHtmlRunnerDialog } from '@/components/documents/DocumentHtmlRunnerDialog'
 import { Button } from '@/components/ui/button'
@@ -346,13 +347,34 @@ export function DocumentEditorPage() {
 				contentFormat={document.contentFormat}
 			/>
 
-			<DocumentEditor
-				content={content}
-				onChange={setContent}
-				editable={!readOnly}
-				documentTitle={title}
-				preferences={preferences}
-			/>
+			<div className="flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
+				<DocumentEditor
+					content={content}
+					onChange={setContent}
+					editable={!readOnly}
+					documentTitle={title}
+					preferences={preferences}
+					className="min-h-0 flex-1"
+					onWikiLinkClick={(targetTitle) => {
+						void (async () => {
+							const { findDocumentByTitle, createDocument } = await import(
+								'@/services/documents/documentService'
+							)
+							const existing = await findDocumentByTitle(targetTitle)
+							if (existing) {
+								navigateApp(`/library/documents/${existing.id}`)
+								return
+							}
+							const created = await createDocument(targetTitle, '', {
+								source: 'user',
+								contentFormat: 'markdown',
+							})
+							navigateApp(`/library/documents/${created.id}`)
+						})()
+					}}
+				/>
+				<KnowledgeNotePanel noteId={document.id} />
+			</div>
 		</div>
 	)
 }

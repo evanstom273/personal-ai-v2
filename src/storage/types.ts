@@ -171,6 +171,22 @@ export interface DocumentRecord {
 	readOnly: boolean
 	createdAt: number
 	updatedAt: number
+	collectionId?: string
+	tags?: string[]
+	pinned?: boolean
+	archived?: boolean
+	dailyNoteDate?: string
+	lastEditedBy?: 'user' | 'assistant'
+}
+
+export interface KnowledgeCollection {
+	id: string
+	name: string
+	parentId?: string
+	kind: 'folder' | 'system'
+	systemKey?: string
+	createdAt: number
+	updatedAt: number
 }
 
 export type DocumentSource = 'upload' | 'user' | 'assistant'

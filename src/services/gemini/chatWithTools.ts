@@ -1,21 +1,7 @@
-import { executeDocumentToolCall } from '@/services/gemini/documentTools'
 import {
-	executeCodebaseToolCall,
-	isCodebaseToolName,
-} from '@/services/gemini/codebaseTools'
-import { buildChatTools } from '@/services/gemini/executeAppToolCall'
-import {
-	executeHomeTodoToolCall,
-	isHomeTodoToolName,
-} from '@/services/home/homeTodoTools'
-import {
-	executeProjectToolCall,
-	isProjectToolName,
-} from '@/services/projects/projectTools'
-import {
-	executeReminderToolCall,
-	isReminderToolName,
-} from '@/services/reminders/reminderTools'
+	buildChatTools,
+	executeAppToolCall,
+} from '@/services/gemini/executeAppToolCall'
 import { buildFullSystemInstruction } from '@/services/gemini/documentContext'
 import {
 	MAX_CHAT_OUTPUT_TOKENS,
@@ -32,10 +18,7 @@ import { geminiStreamGenerateContent } from '@/services/gemini/stream'
 import type { MessageMedia, PendingDeleteConfirmation, UserPreferences } from '@/storage/types'
 import type { MessageDocumentLink } from '@/storage/types'
 import { formatMessageForModel } from '@/utils/dateTime'
-import {
-	extractDocumentLinkFromToolResult,
-	mergeDocumentLinks,
-} from '@/utils/messageAttachments'
+import { mergeDocumentLinks } from '@/utils/messageAttachments'
 
 interface GeminiPart {
 	text?: string
@@ -131,7 +114,7 @@ export async function generateChatWithTools(
 				systemInstruction: {
 					parts: [{ text: systemInstruction }],
 				},
-				tools: buildChatTools(useWebSearch, preferences.allowCodebaseInspection ?? false),
+				tools: buildChatTools(useWebSearch),
 				contents,
 				generationConfig: {
 					maxOutputTokens: MAX_CHAT_OUTPUT_TOKENS,
@@ -179,64 +162,7 @@ export async function generateChatWithTools(
 
 			for (const part of functionCallParts) {
 				const functionCall = part.functionCall!
-
-				if (isCodebaseToolName(functionCall.name)) {
-					const toolResult = executeCodebaseToolCall(
-						functionCall.name,
-						functionCall.args ?? {},
-					)
-					functionResponseParts.push({
-						functionResponse: {
-							name: toolResult.name,
-							response: toolResult.response,
-						},
-					})
-					continue
-				}
-
-				if (isReminderToolName(functionCall.name)) {
-					const toolResult = await executeReminderToolCall(
-						functionCall.name,
-						functionCall.args ?? {},
-					)
-					functionResponseParts.push({
-						functionResponse: {
-							name: toolResult.name,
-							response: toolResult.response,
-						},
-					})
-					continue
-				}
-
-				if (isProjectToolName(functionCall.name)) {
-					const toolResult = await executeProjectToolCall(
-						functionCall.name,
-						functionCall.args ?? {},
-					)
-					functionResponseParts.push({
-						functionResponse: {
-							name: toolResult.name,
-							response: toolResult.response,
-						},
-					})
-					continue
-				}
-
-				if (isHomeTodoToolName(functionCall.name)) {
-					const toolResult = await executeHomeTodoToolCall(
-						functionCall.name,
-						functionCall.args ?? {},
-					)
-					functionResponseParts.push({
-						functionResponse: {
-							name: toolResult.name,
-							response: toolResult.response,
-						},
-					})
-					continue
-				}
-
-				const toolResult = await executeDocumentToolCall(
+				const toolResult = await executeAppToolCall(
 					functionCall.name,
 					functionCall.args ?? {},
 				)
@@ -245,12 +171,10 @@ export async function generateChatWithTools(
 					pendingDeleteConfirmation = toolResult.pendingDeleteConfirmation
 				}
 
-				const documentLink = extractDocumentLinkFromToolResult(
-					functionCall.name,
-					toolResult.response,
-				)
-				if (documentLink) {
-					documentLinks = mergeDocumentLinks(documentLinks, [documentLink])
+				if (toolResult.documentLink) {
+					documentLinks = mergeDocumentLinks(documentLinks, [
+						toolResult.documentLink,
+					])
 				}
 
 				functionResponseParts.push({

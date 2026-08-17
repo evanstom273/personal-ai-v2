@@ -4,7 +4,6 @@ import {
 	htmlToMarkdown,
 	normalizeDocumentRecord,
 } from '@/utils/documentContent'
-import { buildAppReferenceContext } from '@/services/gemini/appReferenceContext'
 import { buildMemoryContextFromStore } from '@/services/gemini/memoryContext'
 import { buildProjectContextFromStore } from '@/services/gemini/projectContext'
 import { buildScheduleContextFromStore } from '@/services/gemini/scheduleContext'
@@ -29,7 +28,7 @@ export function truncateDocumentTextForTool(text: string): {
 	}
 }
 
-function documentBodyForContext(document: DocumentRecord): string {
+export function documentBodyForContext(document: DocumentRecord): string {
 	if (document.contentFormat === 'markdown') {
 		return document.content
 	}
@@ -95,10 +94,9 @@ export async function buildFullSystemInstruction(
 ): Promise<string> {
 	const documents = await listDocuments()
 	const base = buildSystemInstruction(preferences)
-	const appReferenceContext = buildAppReferenceContext()
 	const memoryContext = await buildMemoryContextFromStore()
 	const scheduleContext = await buildScheduleContextFromStore()
 	const projectContext = await buildProjectContextFromStore()
 	const libraryContext = buildDocumentLibraryContext(documents)
-	return `${base}\n\n${appReferenceContext}\n\n${memoryContext}\n\n${scheduleContext}\n\n${projectContext}\n\n${libraryContext}`
+	return `${base}\n\n${memoryContext}\n\n${scheduleContext}\n\n${projectContext}\n\n${libraryContext}`
 }

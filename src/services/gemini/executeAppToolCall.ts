@@ -1,9 +1,7 @@
-import { executeDocumentToolCall, DOCUMENT_TOOL_DECLARATIONS } from '@/services/gemini/documentTools'
 import {
-	CODEBASE_TOOL_DECLARATIONS,
-	executeCodebaseToolCall,
-	isCodebaseToolName,
-} from '@/services/gemini/codebaseTools'
+	DOCUMENT_TOOL_DECLARATIONS,
+	executeDocumentToolCall,
+} from '@/services/gemini/documentTools'
 import {
 	executeProjectToolCall,
 	isProjectToolName,
@@ -30,17 +28,76 @@ export interface AppToolCallResult {
 	documentLink?: MessageDocumentLink
 }
 
+interface GeminiToolDeclaration {
+	name: string
+	description: string
+	parameters: {
+		type: string
+		properties?: Record<string, { type: string; description?: string }>
+		required?: readonly string[]
+	}
+}
+
+function convertGeminiType(type: string): string {
+	switch (type) {
+		case 'OBJECT':
+			return 'object'
+		case 'STRING':
+			return 'string'
+		case 'INTEGER':
+			return 'integer'
+		case 'BOOLEAN':
+			return 'boolean'
+		case 'ARRAY':
+			return 'array'
+		default:
+			return type.toLowerCase()
+	}
+}
+
+function convertDeclarationToOllamaTool(declaration: GeminiToolDeclaration) {
+	const properties: Record<string, { type: string; description?: string }> = {}
+
+	for (const [key, value] of Object.entries(
+		declaration.parameters.properties ?? {},
+	)) {
+		properties[key] = {
+			type: convertGeminiType(value.type),
+			description: value.description,
+		}
+	}
+
+	return {
+		type: 'function' as const,
+		function: {
+			name: declaration.name,
+			description: declaration.description,
+			parameters: {
+				type: 'object',
+				properties,
+				required: declaration.parameters.required ?? [],
+			},
+		},
+	}
+}
+
+const APP_TOOL_DECLARATIONS = [
+	...DOCUMENT_TOOL_DECLARATIONS,
+	...PROJECT_TOOL_DECLARATIONS,
+	...REMINDER_TOOL_DECLARATIONS,
+	...HOME_TODO_TOOL_DECLARATIONS,
+] as const
+
+export function buildOllamaTools(): ReturnType<typeof convertDeclarationToOllamaTool>[] {
+	return APP_TOOL_DECLARATIONS.map((declaration) =>
+		convertDeclarationToOllamaTool(declaration),
+	)
+}
+
 export function buildChatTools(
 	useWebSearch: boolean,
-	allowCodebaseInspection: boolean,
 ): Array<Record<string, unknown>> {
-	const declarations = [
-		...DOCUMENT_TOOL_DECLARATIONS,
-		...PROJECT_TOOL_DECLARATIONS,
-		...REMINDER_TOOL_DECLARATIONS,
-		...HOME_TODO_TOOL_DECLARATIONS,
-		...(allowCodebaseInspection ? CODEBASE_TOOL_DECLARATIONS : []),
-	]
+	const declarations = [...APP_TOOL_DECLARATIONS]
 
 	if (useWebSearch) {
 		return [
@@ -58,14 +115,6 @@ export async function executeAppToolCall(
 	name: string,
 	args: Record<string, unknown>,
 ): Promise<AppToolCallResult> {
-	if (isCodebaseToolName(name)) {
-		const toolResult = executeCodebaseToolCall(name, args)
-		return {
-			name: toolResult.name,
-			response: toolResult.response,
-		}
-	}
-
 	if (isReminderToolName(name)) {
 		const toolResult = await executeReminderToolCall(name, args)
 		return {

@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
 	DEFAULT_SETTINGS,
-	streamChatCompletion,
 } from '@/services/ollamaService'
+import { generateOllamaChatWithTools } from '@/services/ollamaChatWithTools'
 import {
 	fetchServerSettings,
 	loadCachedPersonalaiHost,
@@ -173,66 +173,63 @@ export function useChatGeneration({
 				streamingContentRef.current = ''
 				setStreamingAssistant({ id: assistantMessageId, content: '' })
 
-				await streamChatCompletion(
+				const chatResult = await generateOllamaChatWithTools(
 					modelId,
 					historyMessages,
 					settings,
+					preferences,
 					{
-						onChunk: (_, __, thinkingText, mainText) => {
-							streamingContentRef.current = mainText
-							const display = thinkingText
-								? `${thinkingText}\n\n${mainText}`
-								: mainText
+						signal: abortController.signal,
+						userMessageText: text,
+						onTextDelta: (delta) => {
+							streamingContentRef.current += delta
 							setStreamingAssistant({
 								id: assistantMessageId,
-								content: display,
+								content: streamingContentRef.current,
 							})
 						},
-						onDone: async (_, _thinkingText, mainText) => {
-							const assistantMessage: StoredMessage = {
-								id: assistantMessageId,
-								role: 'assistant',
-								content: mainText,
-								createdAt: Date.now(),
-							}
-							await appendMessages([assistantMessage], modelId)
-							setStreamingAssistant(null)
+						onToolActivity: () => {
 							streamingContentRef.current = ''
-
-							if (mainText.trim() && onAssistantReply) {
-								onAssistantReply({
-									message: assistantMessage,
-									inputMethod,
-								})
-							}
-
-							const aiName = preferences.aiName.trim() || 'Personal AI'
-							if (!isChatRouteRef.current) {
-								setCompletionNotice(`${aiName} finished replying.`)
-							}
-
-							void requestNotificationPermission().then(() => {
-								void notifyGenerationComplete(aiName, mainText, {
-									isChatRoute: isChatRouteRef.current,
-								})
+							setStreamingAssistant({
+								id: assistantMessageId,
+								content: '',
 							})
-						},
-						onError: async (streamError) => {
-							const errorContent = `⚠️ **Error**: ${streamError.message}`
-							await appendMessages([
-								{
-									id: assistantMessageId,
-									role: 'assistant',
-									content: errorContent,
-									createdAt: Date.now(),
-								},
-							])
-							setStreamingAssistant(null)
-							setError(streamError.message)
 						},
 					},
-					abortController.signal,
 				)
+
+				const assistantMessage: StoredMessage = {
+					id: assistantMessageId,
+					role: 'assistant',
+					content: chatResult.text,
+					documentLinks:
+						chatResult.documentLinks.length > 0
+							? chatResult.documentLinks
+							: undefined,
+					pendingDeleteConfirmation: chatResult.pendingDeleteConfirmation,
+					createdAt: Date.now(),
+				}
+				await appendMessages([assistantMessage], modelId)
+				setStreamingAssistant(null)
+				streamingContentRef.current = ''
+
+				if (chatResult.text.trim() && onAssistantReply) {
+					onAssistantReply({
+						message: assistantMessage,
+						inputMethod,
+					})
+				}
+
+				const aiName = preferences.aiName.trim() || 'Personal AI'
+				if (!isChatRouteRef.current) {
+					setCompletionNotice(`${aiName} finished replying.`)
+				}
+
+				void requestNotificationPermission().then(() => {
+					void notifyGenerationComplete(aiName, chatResult.text, {
+						isChatRoute: isChatRouteRef.current,
+					})
+				})
 			} catch (generationError) {
 				if (
 					generationError instanceof DOMException &&

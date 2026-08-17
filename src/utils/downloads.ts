@@ -1,6 +1,4 @@
 import type { DocumentRecord } from '@/storage/types'
-import { formatChangelogMarkdown } from '@/data/changelog'
-import { getAppReferenceMarkdown } from '@/services/gemini/appReferenceContext'
 import {
 	documentContentForExport,
 	htmlToPlainTextMultiline,
@@ -114,18 +112,4 @@ export function downloadLibraryMediaItem(
 ): void {
 	const extension = extensionForMimeType(mimeType)
 	downloadDataUrl(dataUrl, buildDownloadFilename(title, extension, timestamp))
-}
-
-export function downloadAppReferenceMarkdown(): void {
-	downloadBlob(
-		new Blob([getAppReferenceMarkdown()], { type: 'text/markdown;charset=utf-8' }),
-		buildDownloadFilename('Personal AI App Reference', 'md'),
-	)
-}
-
-export function downloadChangelogMarkdown(): void {
-	downloadBlob(
-		new Blob([formatChangelogMarkdown()], { type: 'text/markdown;charset=utf-8' }),
-		buildDownloadFilename('Personal AI Changelog', 'md'),
-	)
 }

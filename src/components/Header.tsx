@@ -15,6 +15,7 @@ import {
   Zap,
 } from 'lucide-react'
 import type { LocalModel, ChatSettings } from '../types/chat'
+import { DeploymentStageBadge } from './DeploymentStageBadge'
 
 interface HeaderProps {
   sidebarOpen: boolean
@@ -206,6 +207,8 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Right side Actions */}
       <div className="flex items-center gap-2">
+        <DeploymentStageBadge />
+
         {hasMessages && (
           <button
             onClick={onClearCurrentChat}

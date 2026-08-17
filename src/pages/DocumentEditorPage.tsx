@@ -21,6 +21,10 @@ import {
 	updateDocument,
 	subscribeDocumentsChanged,
 } from '@/services/documents/documentService'
+import {
+	applyLivingNoteSuggestion,
+	dismissLivingNoteSuggestion,
+} from '@/services/knowledge/livingNoteService'
 import { saveDocumentAsTemplate } from '@/services/documents/documentTemplateService'
 import type { DocumentContentFormat, DocumentRecord } from '@/storage/types'
 import {
@@ -286,6 +290,21 @@ export function DocumentEditorPage() {
 							</div>
 						) : (
 							<>
+								<select
+									value={document.livingNoteMode ?? 'off'}
+									onChange={(event) => {
+										const livingNoteMode = event.target.value as
+											| 'off'
+											| 'suggest'
+											| 'automatic'
+										void updateDocument(document.id, { livingNoteMode }).then(setDocument)
+									}}
+									className="rounded-lg border border-border bg-background px-2 py-1 text-xs"
+								>
+									<option value="off">Living note: Off</option>
+									<option value="suggest">Living note: Suggest</option>
+									<option value="automatic">Living note: Automatic</option>
+								</select>
 								<Button
 									type="button"
 									variant="outline"
@@ -346,6 +365,53 @@ export function DocumentEditorPage() {
 				content={editorHtmlToDocumentContent(content, document.contentFormat)}
 				contentFormat={document.contentFormat}
 			/>
+
+			<Dialog
+				open={Boolean(document.livingNotePendingContent)}
+				onOpenChange={(open) => {
+					if (!open) {
+						void dismissLivingNoteSuggestion(document.id).then(setDocument)
+					}
+				}}
+			>
+				<DialogContent className="w-[min(32rem,calc(100vw-2rem))]">
+					<DialogHeader>
+						<DialogTitle>Living note suggestion</DialogTitle>
+						<DialogDescription>
+							{document.livingNotePendingSummary ??
+								'PersonalAI proposed an update to this living note.'}
+						</DialogDescription>
+					</DialogHeader>
+					<pre className="max-h-64 overflow-auto rounded-lg border border-border bg-muted/30 p-3 text-xs whitespace-pre-wrap">
+						{document.livingNotePendingContent}
+					</pre>
+					<DialogFooter>
+						<Button
+							variant="outline"
+							onClick={() => {
+								void dismissLivingNoteSuggestion(document.id).then(setDocument)
+							}}
+						>
+							Dismiss
+						</Button>
+						<Button
+							onClick={() => {
+								void applyLivingNoteSuggestion(document.id).then((updated) => {
+									setDocument(updated)
+									const editorHtml = documentContentToEditorHtml(updated)
+									setContent(editorHtml)
+									lastPersistedRef.current = {
+										title: updated.title,
+										content: editorHtml,
+									}
+								})
+							}}
+						>
+							Apply update
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
 
 			<div className="flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
 				<DocumentEditor

@@ -20,6 +20,10 @@ import {
 	searchDocuments,
 	updateDocument,
 } from '@/services/documents/documentService'
+import {
+	downloadKnowledgeCollectionZip,
+	downloadKnowledgeVaultZip,
+} from '@/services/knowledge/knowledgeApi'
 import { uploadDocumentsFromFiles } from '@/services/documents/documentUploadService'
 import type { DocumentRecord, KnowledgeCollection } from '@/storage/types'
 import { cn } from '@/utils/cn'
@@ -148,6 +152,27 @@ export function KnowledgeWorkspace({ query }: { query: string }) {
 		}
 	}
 
+	async function handleExportVault(): Promise<void> {
+		const blob = await downloadKnowledgeVaultZip()
+		const url = URL.createObjectURL(blob)
+		const anchor = document.createElement('a')
+		anchor.href = url
+		anchor.download = 'PersonalAI-Knowledge.zip'
+		anchor.click()
+		URL.revokeObjectURL(url)
+	}
+
+	async function handleExportCollection(): Promise<void> {
+		if (!activeCollectionId) return
+		const blob = await downloadKnowledgeCollectionZip(activeCollectionId)
+		const url = URL.createObjectURL(blob)
+		const anchor = document.createElement('a')
+		anchor.href = url
+		anchor.download = 'PersonalAI-Knowledge-collection.zip'
+		anchor.click()
+		URL.revokeObjectURL(url)
+	}
+
 	async function handleOpenToday(): Promise<void> {
 		const note = await openDailyNote()
 		openDocument(note.id)
@@ -219,6 +244,19 @@ export function KnowledgeWorkspace({ query }: { query: string }) {
 				/>
 
 				<div className="flex flex-wrap justify-end gap-2">
+					<Button type="button" variant="outline" size="sm" onClick={() => void handleExportVault()}>
+						Export vault
+					</Button>
+					{activeCollectionId ? (
+						<Button
+							type="button"
+							variant="outline"
+							size="sm"
+							onClick={() => void handleExportCollection()}
+						>
+							Export folder
+						</Button>
+					) : null}
 					<Button type="button" variant="outline" size="sm" onClick={() => void handleOpenToday()}>
 						<CalendarDays className="h-4 w-4" />
 						Today&apos;s note

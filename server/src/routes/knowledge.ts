@@ -101,6 +101,10 @@ export function createKnowledgeRoutes(config: ServerConfig): Hono {
 			tags?: string[]
 			editor?: knowledgeRepo.KnowledgeEditor
 			saveRevision?: boolean
+			livingNoteMode?: 'off' | 'suggest' | 'automatic'
+			livingNotePendingContent?: string | null
+			livingNotePendingSummary?: string | null
+			livingNoteLastConsolidatedAt?: number | null
 		}>()
 
 		try {
@@ -113,6 +117,10 @@ export function createKnowledgeRoutes(config: ServerConfig): Hono {
 				tags: body.tags,
 				editor: body.editor,
 				saveRevision: body.saveRevision,
+				livingNoteMode: body.livingNoteMode,
+				livingNotePendingContent: body.livingNotePendingContent,
+				livingNotePendingSummary: body.livingNotePendingSummary,
+				livingNoteLastConsolidatedAt: body.livingNoteLastConsolidatedAt,
 			})
 
 			if (!note) return c.json({ error: 'Note not found' }, 404)
@@ -194,6 +202,26 @@ export function createKnowledgeRoutes(config: ServerConfig): Hono {
 		const markdown = knowledgeRepo.exportNoteMarkdown(note)
 		return c.text(markdown, 200, {
 			'Content-Type': 'text/markdown; charset=utf-8',
+		})
+	})
+
+	app.get('/export/vault', (c) => {
+		const zip = knowledgeRepo.exportKnowledgeVaultZip(db())
+		return new Response(zip.buffer as ArrayBuffer, {
+			headers: {
+				'Content-Type': 'application/zip',
+				'Content-Disposition': 'attachment; filename="PersonalAI-Knowledge.zip"',
+			},
+		})
+	})
+
+	app.get('/export/collection/:collectionId', (c) => {
+		const zip = knowledgeRepo.exportKnowledgeVaultZip(db(), c.req.param('collectionId'))
+		return new Response(zip.buffer as ArrayBuffer, {
+			headers: {
+				'Content-Type': 'application/zip',
+				'Content-Disposition': `attachment; filename="PersonalAI-Knowledge-${c.req.param('collectionId')}.zip"`,
+			},
 		})
 	})
 

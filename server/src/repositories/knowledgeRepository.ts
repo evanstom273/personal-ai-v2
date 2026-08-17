@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { strToU8, zipSync } from 'fflate'
 import type { ServerConfig } from '../config.js'
 import type { PersonalAiDatabase } from '../db/types.js'
 
@@ -31,6 +32,10 @@ export interface KnowledgeNoteRow {
 	archived: number
 	daily_note_date: string | null
 	last_edited_by: KnowledgeEditor
+	living_note_mode: 'off' | 'suggest' | 'automatic'
+	living_note_last_consolidated_at: number | null
+	living_note_pending_content: string | null
+	living_note_pending_summary: string | null
 	created_at: number
 	updated_at: number
 }
@@ -49,6 +54,15 @@ const SYSTEM_COLLECTIONS = [
 ] as const
 
 const WIKI_LINK_PATTERN = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g
+
+const NOTE_COLUMNS =
+	'id, title, content, collection_id, source, content_format, read_only, pinned, archived, daily_note_date, last_edited_by, living_note_mode, living_note_last_consolidated_at, living_note_pending_content, living_note_pending_summary, created_at, updated_at'
+
+function noteSelectColumns(alias?: string): string {
+	const columns = NOTE_COLUMNS.split(',').map((column) => column.trim())
+	if (!alias) return columns.join(', ')
+	return columns.map((column) => `${alias}.${column}`).join(', ')
+}
 
 function mapNoteRow(
 	row: KnowledgeNoteRow,
@@ -340,9 +354,7 @@ export function listNotes(
 
 	const rows = db
 		.prepare(
-			`SELECT n.id, n.title, n.content, n.collection_id, n.source, n.content_format,
-			        n.read_only, n.pinned, n.archived, n.daily_note_date, n.last_edited_by,
-			        n.created_at, n.updated_at
+			`SELECT ${noteSelectColumns('n')}
 			 FROM knowledge_notes n
 			 ${where}
 			 ORDER BY n.pinned DESC, n.updated_at DESC
@@ -356,8 +368,7 @@ export function listNotes(
 export function getNote(db: PersonalAiDatabase, id: string): KnowledgeNoteWithMeta | undefined {
 	const row = db
 		.prepare(
-			`SELECT id, title, content, collection_id, source, content_format, read_only, pinned,
-			        archived, daily_note_date, last_edited_by, created_at, updated_at
+			`SELECT ${noteSelectColumns()}
 			 FROM knowledge_notes WHERE id = ?`,
 		)
 		.get(id) as KnowledgeNoteRow | undefined
@@ -372,8 +383,7 @@ export function findNoteByTitle(
 	const normalized = title.trim().toLowerCase()
 	const row = db
 		.prepare(
-			`SELECT id, title, content, collection_id, source, content_format, read_only, pinned,
-			        archived, daily_note_date, last_edited_by, created_at, updated_at
+			`SELECT ${noteSelectColumns()}
 			 FROM knowledge_notes
 			 WHERE LOWER(TRIM(title)) = ?
 			 ORDER BY updated_at DESC
@@ -450,6 +460,10 @@ export function updateNote(
 		tags?: string[]
 		editor?: KnowledgeEditor
 		saveRevision?: boolean
+		livingNoteMode?: 'off' | 'suggest' | 'automatic'
+		livingNotePendingContent?: string | null
+		livingNotePendingSummary?: string | null
+		livingNoteLastConsolidatedAt?: number | null
 	},
 ): KnowledgeNoteWithMeta | undefined {
 	const existing = getNote(db, id)
@@ -484,6 +498,10 @@ export function updateNote(
 			pinned = ?,
 			archived = ?,
 			last_edited_by = ?,
+			living_note_mode = ?,
+			living_note_pending_content = ?,
+			living_note_pending_summary = ?,
+			living_note_last_consolidated_at = ?,
 			updated_at = ?
 		 WHERE id = ?`,
 	).run(
@@ -495,6 +513,16 @@ export function updateNote(
 		updates.pinned !== undefined ? (updates.pinned ? 1 : 0) : existing.pinned,
 		updates.archived !== undefined ? (updates.archived ? 1 : 0) : existing.archived,
 		editor,
+		updates.livingNoteMode ?? existing.living_note_mode,
+		updates.livingNotePendingContent !== undefined
+			? updates.livingNotePendingContent
+			: existing.living_note_pending_content,
+		updates.livingNotePendingSummary !== undefined
+			? updates.livingNotePendingSummary
+			: existing.living_note_pending_summary,
+		updates.livingNoteLastConsolidatedAt !== undefined
+			? updates.livingNoteLastConsolidatedAt
+			: existing.living_note_last_consolidated_at,
 		now,
 		id,
 	)
@@ -642,8 +670,7 @@ export function getOrCreateDailyNote(
 ): KnowledgeNoteWithMeta {
 	const existing = db
 		.prepare(
-			`SELECT id, title, content, collection_id, source, content_format, read_only, pinned,
-			        archived, daily_note_date, last_edited_by, created_at, updated_at
+			`SELECT ${noteSelectColumns()}
 			 FROM knowledge_notes WHERE daily_note_date = ?`,
 		)
 		.get(date) as KnowledgeNoteRow | undefined
@@ -780,6 +807,41 @@ export function exportNoteMarkdown(note: KnowledgeNoteWithMeta): string {
 		.join('\n')
 }
 
+export function buildKnowledgeExportEntries(
+	db: PersonalAiDatabase,
+	filter?: { collectionId?: string },
+): Array<{ path: string; content: string }> {
+	const notes = listNotes(db, {
+		collectionId: filter?.collectionId,
+		includeArchived: true,
+		limit: 5000,
+	})
+
+	return notes.map((note) => {
+		const segments = note.collection_id
+			? getCollectionPathSegments(db, note.collection_id)
+			: ['Notes']
+		const filename = `${slugify(note.title)}-${note.id.slice(0, 8)}.md`
+		const path = [...segments, filename].join('/')
+		return { path, content: exportNoteMarkdown(note) }
+	})
+}
+
+export function exportKnowledgeVaultZip(
+	db: PersonalAiDatabase,
+	collectionId?: string,
+): Uint8Array {
+	const entries = buildKnowledgeExportEntries(
+		db,
+		collectionId ? { collectionId } : undefined,
+	)
+	const zipData: Record<string, Uint8Array> = {}
+	for (const entry of entries) {
+		zipData[entry.path] = strToU8(entry.content)
+	}
+	return zipSync(zipData)
+}
+
 export function mapNoteToApi(note: KnowledgeNoteWithMeta) {
 	return {
 		id: note.id,
@@ -794,6 +856,10 @@ export function mapNoteToApi(note: KnowledgeNoteWithMeta) {
 		dailyNoteDate: note.daily_note_date ?? undefined,
 		lastEditedBy: note.last_edited_by,
 		tags: note.tags,
+		livingNoteMode: note.living_note_mode,
+		livingNoteLastConsolidatedAt: note.living_note_last_consolidated_at ?? undefined,
+		livingNotePendingContent: note.living_note_pending_content ?? undefined,
+		livingNotePendingSummary: note.living_note_pending_summary ?? undefined,
 		createdAt: note.created_at,
 		updatedAt: note.updated_at,
 	}

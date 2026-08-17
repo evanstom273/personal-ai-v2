@@ -4,6 +4,9 @@ import { cors } from 'hono/cors'
 import { loadConfig } from './config.js'
 import { getDb } from './db/connection.js'
 import { createKnowledgeRoutes } from './routes/knowledge.js'
+import { createMemoryRoutes } from './routes/memories.js'
+import { createProjectRoutes } from './routes/projects.js'
+import { createReminderRoutes } from './routes/reminders.js'
 import { createPersonalAiRoutes } from './routes/personalai.js'
 import { checkOllamaHealth, proxyOllamaRequest } from './services/ollamaProxy.js'
 
@@ -35,6 +38,9 @@ app.get('/health', async (c) => {
 const personalAi = createPersonalAiRoutes(config)
 app.route('/api/personalai', personalAi)
 app.route('/api/personalai/knowledge', createKnowledgeRoutes(config))
+app.route('/api/personalai/projects', createProjectRoutes(config))
+app.route('/api/personalai/memories', createMemoryRoutes(config))
+app.route('/api/personalai/reminders', createReminderRoutes(config))
 
 app.get('/api/tags', async (c) => {
 	try {

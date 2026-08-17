@@ -4,11 +4,21 @@ import {
 	parseScheduledAtIso,
 } from '@/services/reminders/reminderRecurrence'
 import {
-	deleteValue,
-	getAllValues,
-	getValue,
-	setValue,
-} from '@/storage/storageService'
+	createReminderApi,
+	deleteReminderApi,
+	fetchDueReminders,
+	fetchReminder,
+	fetchReminders,
+	importRemindersBatch,
+	updateReminderApi,
+} from '@/services/reminders/remindersApi'
+import {
+	isMigrationComplete,
+	markMigrationComplete,
+	MIGRATION_FLAGS,
+	requirePersonalAiServer,
+} from '@/services/personalaiServer'
+import { getAllValues } from '@/storage/storageService'
 import type {
 	ReminderRecord,
 	ReminderRecurrence,
@@ -37,23 +47,32 @@ function sortReminders(reminders: ReminderRecord[]): ReminderRecord[] {
 	})
 }
 
-export async function listReminders(query?: string): Promise<ReminderRecord[]> {
-	const reminders = sortReminders(await getAllValues<ReminderRecord>('reminders'))
+async function migrateIndexedDbToServerIfNeeded(): Promise<void> {
+	if (isMigrationComplete(MIGRATION_FLAGS.reminders)) return
 
-	if (!query?.trim()) {
-		return reminders
+	const local = await getAllValues<ReminderRecord>('reminders')
+	if (local.length === 0) {
+		markMigrationComplete(MIGRATION_FLAGS.reminders)
+		return
 	}
 
-	const normalized = query.trim().toLowerCase()
-	return reminders.filter(
-		(reminder) =>
-			reminder.title.toLowerCase().includes(normalized) ||
-			(reminder.note?.toLowerCase().includes(normalized) ?? false),
-	)
+	await importRemindersBatch(local)
+	markMigrationComplete(MIGRATION_FLAGS.reminders)
+}
+
+async function ensureReady(): Promise<void> {
+	requirePersonalAiServer()
+	await migrateIndexedDbToServerIfNeeded()
+}
+
+export async function listReminders(query?: string): Promise<ReminderRecord[]> {
+	await ensureReady()
+	return sortReminders(await fetchReminders(query))
 }
 
 export async function getReminder(id: string): Promise<ReminderRecord | undefined> {
-	return getValue<ReminderRecord>('reminders', id)
+	await ensureReady()
+	return fetchReminder(id)
 }
 
 export async function createReminder(input: {
@@ -65,30 +84,8 @@ export async function createReminder(input: {
 	source?: ReminderSource
 	enabled?: boolean
 }): Promise<ReminderRecord> {
-	const now = Date.now()
-	const title = input.title.trim()
-	if (!title) {
-		throw new Error('Reminder title is required.')
-	}
-
-	if (!Number.isFinite(input.scheduledAt)) {
-		throw new Error('Reminder scheduled time is invalid.')
-	}
-
-	const reminder: ReminderRecord = {
-		id: crypto.randomUUID(),
-		title,
-		note: input.note?.trim() || undefined,
-		deliveryMessage: input.deliveryMessage?.trim() || undefined,
-		scheduledAt: input.scheduledAt,
-		recurrence: input.recurrence ?? 'none',
-		enabled: input.enabled ?? true,
-		source: input.source ?? 'user',
-		createdAt: now,
-		updatedAt: now,
-	}
-
-	await setValue('reminders', reminder.id, reminder)
+	await ensureReady()
+	const reminder = await createReminderApi(input)
 	notifyRemindersChanged()
 	return reminder
 }
@@ -108,51 +105,25 @@ export async function updateReminder(
 		>
 	>,
 ): Promise<ReminderRecord | undefined> {
-	const existing = await getReminder(id)
-	if (!existing) {
-		return undefined
-	}
-
-	const next: ReminderRecord = {
-		...existing,
-		...updates,
-		title: updates.title !== undefined ? updates.title.trim() : existing.title,
-		note:
-			updates.note !== undefined
-				? updates.note.trim() || undefined
-				: existing.note,
-		deliveryMessage:
-			updates.deliveryMessage !== undefined
-				? updates.deliveryMessage.trim() || undefined
-				: existing.deliveryMessage,
-		updatedAt: Date.now(),
-	}
-
-	if (!next.title) {
-		throw new Error('Reminder title is required.')
-	}
-
-	await setValue('reminders', id, next)
+	await ensureReady()
+	const reminder = await updateReminderApi(id, updates)
+	if (!reminder) return undefined
 	notifyRemindersChanged()
-	return next
+	return reminder
 }
 
 export async function deleteReminder(id: string): Promise<boolean> {
+	await ensureReady()
 	const existing = await getReminder(id)
-	if (!existing) {
-		return false
-	}
-
-	await deleteValue('reminders', id)
+	if (!existing) return false
+	await deleteReminderApi(id)
 	notifyRemindersChanged()
 	return true
 }
 
 export async function listDueReminders(now = Date.now()): Promise<ReminderRecord[]> {
-	const reminders = await listReminders()
-	return reminders.filter(
-		(reminder) => reminder.enabled && reminder.scheduledAt <= now,
-	)
+	await ensureReady()
+	return await fetchDueReminders(now)
 }
 
 export async function markReminderFired(
@@ -187,22 +158,15 @@ export async function resolveReminderRef(input: {
 		return getReminder(input.reminderId)
 	}
 
-	if (!input.title?.trim()) {
-		return undefined
-	}
+	if (!input.title?.trim()) return undefined
 
 	const normalized = input.title.trim().toLowerCase()
 	const matches = (await listReminders()).filter((reminder) =>
 		reminder.title.toLowerCase().includes(normalized),
 	)
 
-	if (matches.length === 1) {
-		return matches[0]
-	}
-
-	return matches.find(
-		(reminder) => reminder.title.toLowerCase() === normalized,
-	)
+	if (matches.length === 1) return matches[0]
+	return matches.find((reminder) => reminder.title.toLowerCase() === normalized)
 }
 
 export function buildReminderCreateInputFromToolArgs(
@@ -236,8 +200,6 @@ export function buildReminderCreateInputFromToolArgs(
 		recurrence,
 		note: typeof args.note === 'string' ? args.note : undefined,
 		deliveryMessage:
-			typeof args.delivery_message === 'string'
-				? args.delivery_message
-				: undefined,
+			typeof args.delivery_message === 'string' ? args.delivery_message : undefined,
 	}
 }

@@ -1,9 +1,4 @@
-import {
-	deleteValue,
-	getAllValues,
-	getValue,
-	setValue,
-} from '@/storage/storageService'
+import { getAllValues } from '@/storage/storageService'
 import {
 	createKnowledgeCollection,
 	createKnowledgeNote,
@@ -16,18 +11,21 @@ import {
 	fetchKnowledgeRelated,
 	fetchOrCreateDailyNote,
 	importKnowledgeNotesBatch,
-	isKnowledgeServerConfigured,
 	searchKnowledgeNotes,
 	updateKnowledgeNote,
 } from '@/services/knowledge/knowledgeApi'
+import {
+	isMigrationComplete,
+	markMigrationComplete,
+	MIGRATION_FLAGS,
+	requirePersonalAiServer,
+} from '@/services/personalaiServer'
 import type { DocumentRecord, KnowledgeCollection } from '@/storage/types'
 import {
 	normalizeDocumentRecord,
 	resolveCreateDocumentDefaults,
 	type CreateDocumentDefaults,
 } from '@/utils/documentContent'
-
-const MIGRATION_FLAG_KEY = 'knowledge_idb_migrated_v1'
 
 const listeners = new Set<() => void>()
 
@@ -47,18 +45,17 @@ function sortDocuments(documents: DocumentRecord[]): DocumentRecord[] {
 }
 
 async function migrateIndexedDbToServerIfNeeded(): Promise<void> {
-	if (!isKnowledgeServerConfigured()) return
-	if (localStorage.getItem(MIGRATION_FLAG_KEY) === '1') return
+	if (isMigrationComplete(MIGRATION_FLAGS.knowledge)) return
 
 	const localDocs = (await getAllValues<DocumentRecord>('documents')).map(
 		normalizeDocumentRecord,
 	)
 	if (localDocs.length === 0) {
-		localStorage.setItem(MIGRATION_FLAG_KEY, '1')
+		markMigrationComplete(MIGRATION_FLAGS.knowledge)
 		return
 	}
 
-	const result = await importKnowledgeNotesBatch(
+	await importKnowledgeNotesBatch(
 		localDocs.map((doc) => ({
 			id: doc.id,
 			title: doc.title,
@@ -69,17 +66,11 @@ async function migrateIndexedDbToServerIfNeeded(): Promise<void> {
 		})),
 	)
 
-	if (result.imported > 0) {
-		notifyDocumentsChanged()
-	}
-
-	localStorage.setItem(MIGRATION_FLAG_KEY, '1')
+	markMigrationComplete(MIGRATION_FLAGS.knowledge)
 }
 
 async function ensureKnowledgeReady(): Promise<void> {
-	if (!isKnowledgeServerConfigured()) {
-		throw new Error('PersonalAI server is not configured. Set your local connection in Settings.')
-	}
+	requirePersonalAiServer()
 	await migrateIndexedDbToServerIfNeeded()
 }
 
@@ -97,28 +88,12 @@ export async function createCollection(
 }
 
 export async function listDocuments(query?: string): Promise<DocumentRecord[]> {
-	if (!isKnowledgeServerConfigured()) {
-		const documents = sortDocuments(
-			(await getAllValues<DocumentRecord>('documents')).map(normalizeDocumentRecord),
-		)
-		if (!query?.trim()) return documents
-		const normalized = query.trim().toLowerCase()
-		return documents.filter((document) =>
-			document.title.toLowerCase().includes(normalized),
-		)
-	}
-
 	await ensureKnowledgeReady()
 	const notes = await fetchKnowledgeNotes({ query })
 	return sortDocuments(notes.map(normalizeDocumentRecord))
 }
 
 export async function getDocument(id: string): Promise<DocumentRecord | undefined> {
-	if (!isKnowledgeServerConfigured()) {
-		const document = await getValue<DocumentRecord>('documents', id)
-		return document ? normalizeDocumentRecord(document) : undefined
-	}
-
 	await ensureKnowledgeReady()
 	const note = await fetchKnowledgeNote(id)
 	return note ? normalizeDocumentRecord(note) : undefined
@@ -152,23 +127,6 @@ export async function createDocument(
 ): Promise<DocumentRecord> {
 	const defaults = resolveCreateDocumentDefaults(options)
 
-	if (!isKnowledgeServerConfigured()) {
-		const now = Date.now()
-		const document: DocumentRecord = {
-			id: crypto.randomUUID(),
-			title: title.trim() || 'Untitled document',
-			content,
-			source: defaults.source,
-			contentFormat: defaults.contentFormat,
-			readOnly: defaults.readOnly,
-			createdAt: now,
-			updatedAt: now,
-		}
-		await setValue('documents', document.id, document)
-		notifyDocumentsChanged()
-		return document
-	}
-
 	await ensureKnowledgeReady()
 	const note = await createKnowledgeNote({
 		title,
@@ -189,28 +147,20 @@ export async function updateDocument(
 	updates: Partial<
 		Pick<
 			DocumentRecord,
-			'title' | 'content' | 'collectionId' | 'pinned' | 'archived' | 'tags' | 'lastEditedBy'
+			| 'title'
+			| 'content'
+			| 'collectionId'
+			| 'pinned'
+			| 'archived'
+			| 'tags'
+			| 'lastEditedBy'
+			| 'livingNoteMode'
+			| 'livingNotePendingContent'
+			| 'livingNotePendingSummary'
+			| 'livingNoteLastConsolidatedAt'
 		>
 	> & { saveRevision?: boolean },
 ): Promise<DocumentRecord> {
-	if (!isKnowledgeServerConfigured()) {
-		const existing = await getDocument(id)
-		if (!existing) throw new Error(`Document not found: ${id}`)
-		if (existing.readOnly && updates.content !== undefined) {
-			throw new Error('This document is read-only.')
-		}
-
-		const updated: DocumentRecord = {
-			...existing,
-			...updates,
-			title: updates.title?.trim() ? updates.title.trim() : existing.title,
-			updatedAt: Date.now(),
-		}
-		await setValue('documents', id, updated)
-		notifyDocumentsChanged()
-		return updated
-	}
-
 	await ensureKnowledgeReady()
 	const note = await updateKnowledgeNote(id, updates)
 	notifyDocumentsChanged()
@@ -222,12 +172,6 @@ export async function renameDocument(id: string, title: string): Promise<Documen
 }
 
 export async function deleteDocument(id: string): Promise<void> {
-	if (!isKnowledgeServerConfigured()) {
-		await deleteValue('documents', id)
-		notifyDocumentsChanged()
-		return
-	}
-
 	await ensureKnowledgeReady()
 	await deleteKnowledgeNote(id)
 	notifyDocumentsChanged()
@@ -247,10 +191,6 @@ export async function duplicateDocument(id: string): Promise<DocumentRecord> {
 }
 
 export async function searchDocuments(query: string, limit = 30): Promise<DocumentRecord[]> {
-	if (!isKnowledgeServerConfigured()) {
-		return listDocuments(query)
-	}
-
 	await ensureKnowledgeReady()
 	const notes = await searchKnowledgeNotes(query, limit)
 	return sortDocuments(notes.map(normalizeDocumentRecord))

@@ -19,6 +19,7 @@ import remarkGfm from 'remark-gfm'
 import hljs from 'highlight.js'
 import 'highlight.js/styles/github-dark.css'
 import type { ChatMessage } from '../types/chat'
+import { imageAttachmentToDataUrl, isExtractedDocumentName } from '../utils/fileAttachments'
 
 interface ChatMessageItemProps {
   message: ChatMessage
@@ -142,15 +143,30 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
           {message.fileAttachments && message.fileAttachments.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {message.fileAttachments.map((file, idx) => (
-                <div
-                  key={idx}
-                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs text-slate-300"
-                >
-                  <FileCode className="w-3.5 h-3.5 text-cyan-400" />
-                  <span className="font-medium">{file.name}</span>
-                  <span className="text-[10px] text-slate-500">
-                    ({Math.round(file.size / 1024)} KB)
-                  </span>
+                <div key={idx}>
+                  {file.kind === 'image' ? (
+                    <div className="rounded-xl border border-slate-800 bg-slate-900 p-2 max-w-xs">
+                      <img
+                        src={imageAttachmentToDataUrl(file)}
+                        alt={file.name}
+                        className="max-h-40 rounded-lg object-contain"
+                      />
+                      <p className="mt-1 text-[10px] text-slate-500 truncate">{file.name}</p>
+                    </div>
+                  ) : (
+                    <div
+                      className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs text-slate-300"
+                    >
+                      <FileCode className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                      <span className="font-medium">{file.name}</span>
+                      {isExtractedDocumentName(file.name) && (
+                        <span className="text-[10px] text-sky-400">extracted text</span>
+                      )}
+                      <span className="text-[10px] text-slate-500">
+                        ({Math.round(file.size / 1024)} KB)
+                      </span>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

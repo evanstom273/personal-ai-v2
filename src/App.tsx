@@ -4,6 +4,7 @@ import type {
   ChatSession,
   LocalModel,
   ChatSettings,
+  FileAttachment,
 } from './types/chat'
 import {
   fetchLocalModels,
@@ -205,7 +206,7 @@ function App() {
   }
 
   // Send Message Logic
-  const handleSendMessage = async (text: string, files: any[] = []) => {
+  const handleSendMessage = async (text: string, files: FileAttachment[] = []) => {
     let currentId = activeSessionId
     if (!currentId) {
       currentId = createNewSession(text)

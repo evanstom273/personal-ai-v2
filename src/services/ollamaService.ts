@@ -206,7 +206,7 @@ export async function streamChatCompletion(
   const endpoint = buildOllamaApiUrl(settings.ollamaHost, '/api/chat')
 
   // Format messages for Ollama API
-  const formattedMessages: { role: string; content: string }[] = []
+  const formattedMessages: { role: string; content: string; images?: string[] }[] = []
 
   let systemPromptText = settings.systemPrompt?.trim() || ''
   if (!settings.enableThinking) {
@@ -223,18 +223,31 @@ export async function streamChatCompletion(
 
   messages.forEach((msg) => {
     let content = msg.content
-    // Include file attachments content if present
+    const images: string[] = []
+
     if (msg.fileAttachments && msg.fileAttachments.length > 0) {
-      const attachmentsText = msg.fileAttachments
-        .map((f) => `\n--- File: ${f.name} ---\n${f.content}\n--- End File ---`)
-        .join('\n')
-      content = `${content}\n${attachmentsText}`
+      for (const file of msg.fileAttachments) {
+        if (file.kind === 'image') {
+          images.push(file.content)
+        } else {
+          const block = `--- File: ${file.name} ---\n${file.content}\n--- End File ---`
+          content = content.trim() ? `${content}\n${block}` : block
+        }
+      }
     }
 
-    formattedMessages.push({
+    if (images.length > 0 && !content.trim()) {
+      content = 'Describe the attached image(s).'
+    }
+
+    const formatted: { role: string; content: string; images?: string[] } = {
       role: msg.role,
       content,
-    })
+    }
+    if (images.length > 0) {
+      formatted.images = images
+    }
+    formattedMessages.push(formatted)
   })
 
   const startTime = Date.now()

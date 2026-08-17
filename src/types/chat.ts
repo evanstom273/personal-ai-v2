@@ -10,12 +10,15 @@ export interface ChatMessage {
   tokensPerSec?: number
   durationMs?: number
   isError?: boolean
-  fileAttachments?: {
-    name: string
-    size: number
-    content: string
-    type: string
-  }[]
+  fileAttachments?: FileAttachment[]
+}
+
+export interface FileAttachment {
+  name: string
+  size: number
+  content: string
+  type: string
+  kind: 'image' | 'text'
 }
 
 export interface ChatSession {

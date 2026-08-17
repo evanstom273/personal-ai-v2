@@ -60,8 +60,10 @@ export interface ChatSettings {
   contextWindow: number
   theme: 'dark' | 'light' | 'system'
   ollamaHost: string
+  personalaiHost: string
   tailscaleMachine: string
   tailscaleTailnet: string
   autoScroll: boolean
   enableThinking: boolean
+  activeModel: string
 }

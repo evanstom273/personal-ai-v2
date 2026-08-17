@@ -181,7 +181,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 						</div>
 					) : null}
 
-					<div className="flex items-end px-2 py-2 sm:px-3 sm:py-2.5">
+					<div className="flex items-end px-2 py-2 sm:px-3 sm:py-2.5 min-w-0">
 						<input
 							type="file"
 							ref={fileInputRef}
@@ -295,16 +295,18 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 							) : null}
 						</div>
 
-						<textarea
-							ref={textareaRef}
-							value={input}
-							onChange={(e) => setInput(e.target.value)}
-							onKeyDown={handleKeyDown}
-							placeholder={`Message ${selectedModel}...`}
-							disabled={disabled || isReadingFiles}
-							rows={1}
-							className="max-h-48 w-full min-w-0 resize-none border-0 bg-transparent px-2 py-1 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-0"
-						/>
+						<div className="relative mb-0.5 min-w-0 shrink flex-1">
+							<textarea
+								ref={textareaRef}
+								value={input}
+								onChange={(e) => setInput(e.target.value)}
+								onKeyDown={handleKeyDown}
+								placeholder={`Message ${selectedModel}...`}
+								disabled={disabled || isReadingFiles}
+								rows={1}
+								className="max-h-48 w-full min-w-[6rem] resize-none border-0 bg-transparent px-2 py-1 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-0"
+							/>
+						</div>
 
 						<div className="mb-0.5 ml-1 shrink-0">
 							{isStreaming ? (

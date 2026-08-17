@@ -35,6 +35,8 @@ interface ChatInputProps {
 	disabled?: boolean
 	isGenerating?: boolean
 	selectedChatModelId: string
+	enableThinking: boolean
+	onEnableThinkingChange: (enabled: boolean) => void
 	onChatModelChange: (modelId: string) => void
 	onSubmit: (payload: ChatSubmitPayload) => void
 	onStop?: () => void
@@ -46,6 +48,8 @@ export function ChatInput({
 	disabled,
 	isGenerating,
 	selectedChatModelId,
+	enableThinking,
+	onEnableThinkingChange,
 	onChatModelChange,
 	onSubmit,
 	onStop,
@@ -554,6 +558,8 @@ export function ChatInput({
 					<ChatAttachMenu
 						disabled={disabled || isGenerating || isListening || isTranscribing}
 						selectedChatModelId={selectedChatModelId}
+						enableThinking={enableThinking}
+						onEnableThinkingChange={onEnableThinkingChange}
 						onChatModelChange={onChatModelChange}
 						onDocumentUpload={(files) => {
 							void handleDocumentUploads(files)

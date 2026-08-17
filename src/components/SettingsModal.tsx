@@ -175,10 +175,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 							<HardDrive className="w-5 h-5 text-cyan-400 shrink-0" />
 							<div>
 								<h4 className="font-semibold text-slate-200">Local Storage Path</h4>
-								<code className="text-cyan-400 font-mono text-[11px]">E:\models</code>
+								<code className="text-cyan-400 font-mono text-[9px]">E:\models</code>
 							</div>
 						</div>
-						<span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">
+						<span className="text-[8px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">
 							Ollama Engine
 						</span>
 					</div>
@@ -216,13 +216,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 									<span>Test</span>
 								</button>
 							</div>
-							<p className="text-[11px] text-slate-500">
+							<p className="text-[9px] text-slate-500">
 								Empty = local Vite proxy (<code className="font-mono">/api</code> → 127.0.0.1:11434).
 								For Vercel or phone access, set a reachable HTTPS URL.
 							</p>
 
 							{testStatus === 'success' && (
-								<div className="flex items-start gap-2 p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-[11px]">
+								<div className="flex items-start gap-2 p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-[9px]">
 									<Check className="w-4 h-4 shrink-0 mt-0.5" />
 									<div>
 										<p className="font-semibold">{testMessage}</p>
@@ -232,7 +232,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 							)}
 
 							{testStatus === 'error' && (
-								<div className="flex items-start gap-2 p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-[11px]">
+								<div className="flex items-start gap-2 p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-[9px]">
 									<AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
 									<div>
 										<p className="font-semibold">{testMessage}</p>
@@ -242,7 +242,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 							)}
 
 							{testHint && testStatus === 'idle' && (
-								<p className="text-[11px] text-slate-400">{testHint}</p>
+								<p className="text-[9px] text-slate-400">{testHint}</p>
 							)}
 						</div>
 
@@ -250,12 +250,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 							<div className="flex items-center justify-between gap-2">
 								<div>
 									<h5 className="font-semibold text-slate-200 text-sm">Tailscale Serve</h5>
-									<p className="text-[11px] text-slate-500 mt-0.5">
+									<p className="text-[9px] text-slate-500 mt-0.5">
 										Private HTTPS access from your phone without exposing Ollama publicly.
 									</p>
 								</div>
 								{isTailscale && (
-									<span className="text-[10px] px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-300 border border-sky-500/30 font-medium shrink-0">
+									<span className="text-[8px] px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-300 border border-sky-500/30 font-medium shrink-0">
 										Active
 									</span>
 								)}
@@ -290,7 +290,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 								Apply Tailscale Serve URL
 							</button>
 
-							<div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 text-[11px] text-slate-400 space-y-2 font-mono leading-relaxed">
+							<div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 text-[9px] text-slate-400 space-y-2 font-mono leading-relaxed">
 								<p className="text-slate-300 font-sans font-semibold text-xs">On your Ollama PC:</p>
 								<p>tailscale serve --bg --https=443 http://127.0.0.1:11434</p>
 								<p>setx OLLAMA_ORIGINS &quot;{appOrigin}&quot;</p>
@@ -314,7 +314,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 									{formData.enableThinking ? 'Thinking Mode (Deep Reasoning)' : 'Fast Mode (No Thinking)'}
 								</h4>
 							</div>
-							<p className="text-[11px] text-slate-400 max-w-sm">
+							<p className="text-[9px] text-slate-400 max-w-sm">
 								{formData.enableThinking
 									? 'Model generates step-by-step thought processes before responding. Higher accuracy, slower speed.'
 									: 'Model skips internal reasoning and responds directly. Up to 3x-5x faster responses!'}
@@ -344,7 +344,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 										key={preset.name}
 										type="button"
 										onClick={() => setFormData({ ...formData, systemPrompt: preset.prompt })}
-										className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-medium transition-colors"
+										className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[8px] font-medium transition-colors"
 									>
 										{preset.name}
 									</button>
@@ -374,7 +374,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 								onChange={(e) => setFormData({ ...formData, temperature: parseFloat(e.target.value) })}
 								className="w-full accent-cyan-400 cursor-pointer"
 							/>
-							<p className="text-[10px] text-slate-400">
+							<p className="text-[8px] text-slate-400">
 								Higher = more creative & diverse. Lower = deterministic & focused.
 							</p>
 						</div>
@@ -393,7 +393,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 								onChange={(e) => setFormData({ ...formData, topP: parseFloat(e.target.value) })}
 								className="w-full accent-cyan-400 cursor-pointer"
 							/>
-							<p className="text-[10px] text-slate-400">
+							<p className="text-[8px] text-slate-400">
 								Considers cumulative probability cutoff for token selection.
 							</p>
 						</div>
@@ -416,7 +416,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 								<option value={131072}>131,072 (128k)</option>
 								<option value={262144}>262,144 (256k — qwen3.5)</option>
 							</select>
-							<p className="text-[10px] text-slate-500">
+							<p className="text-[8px] text-slate-500">
 								Sent to Ollama as <code className="font-mono text-slate-400">num_ctx</code> on each request.
 								Match your Ollama / model limit (e.g. 256k).
 							</p>
@@ -441,7 +441,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 					</div>
 
 					{endpointKind !== 'vite-proxy' && (
-						<p className="text-[11px] text-slate-500">
+						<p className="text-[9px] text-slate-500">
 							Endpoint type: <span className="text-slate-300">{getEndpointLabel(endpointKind)}</span>
 						</p>
 					)}

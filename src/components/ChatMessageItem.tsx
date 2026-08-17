@@ -73,7 +73,7 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
             </div>
           ) : (
             <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 p-0.5 shadow-md shadow-indigo-500/20">
-              <div className="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center">
+              <div className="w-full h-full bg-slate-950 rounded-[8px] flex items-center justify-center">
                 <Bot className="w-4.5 h-4.5 text-purple-300" />
               </div>
             </div>
@@ -89,7 +89,7 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
                 {isUser ? 'You' : message.model || 'AI Assistant'}
               </span>
               {!isUser && message.tokensPerSec && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-mono text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded-full border border-cyan-500/20">
+                <span className="inline-flex items-center gap-1 text-[8px] font-mono text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded-full border border-cyan-500/20">
                   <Zap className="w-3 h-3 text-cyan-400" />
                   {message.tokensPerSec} t/s
                   {message.durationMs ? ` • ${(message.durationMs / 1000).toFixed(1)}s` : ''}
@@ -151,7 +151,7 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
                         alt={file.name}
                         className="max-h-40 rounded-lg object-contain"
                       />
-                      <p className="mt-1 text-[10px] text-slate-500 truncate">{file.name}</p>
+                      <p className="mt-1 text-[8px] text-slate-500 truncate">{file.name}</p>
                     </div>
                   ) : (
                     <div
@@ -160,9 +160,9 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
                       <FileCode className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
                       <span className="font-medium">{file.name}</span>
                       {isExtractedDocumentName(file.name) && (
-                        <span className="text-[10px] text-sky-400">extracted text</span>
+                        <span className="text-[8px] text-sky-400">extracted text</span>
                       )}
-                      <span className="text-[10px] text-slate-500">
+                      <span className="text-[8px] text-slate-500">
                         ({Math.round(file.size / 1024)} KB)
                       </span>
                     </div>
@@ -217,7 +217,7 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
                       <Brain className="w-3.5 h-3.5 text-purple-400" />
                       <span>Thought Process</span>
                       {isStreaming && isLast && !message.content && (
-                        <span className="flex items-center gap-1 text-[10px] text-purple-300 font-mono">
+                        <span className="flex items-center gap-1 text-[8px] text-purple-300 font-mono">
                           <span className="w-2 h-2 rounded-full bg-purple-400 animate-ping" />
                           Thinking...
                         </span>
@@ -231,7 +231,7 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
                   </button>
 
                   {showThinking && (
-                    <div className="p-3.5 border-t border-slate-800/60 text-slate-300 font-mono text-[11px] leading-relaxed whitespace-pre-wrap bg-slate-950/40 max-h-60 overflow-y-auto">
+                    <div className="p-3.5 border-t border-slate-800/60 text-slate-300 font-mono text-[9px] leading-relaxed whitespace-pre-wrap bg-slate-950/40 max-h-60 overflow-y-auto">
                       {message.thinkingContent}
                     </div>
                   )}
@@ -260,7 +260,7 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
                           if (!match && !String(children).includes('\n')) {
                             return (
                               <code
-                                className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-cyan-300 font-mono text-[12px]"
+                                className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-cyan-300 font-mono text-[10px]"
                                 {...props}
                               >
                                 {children}
@@ -329,12 +329,12 @@ const CodeBlock: React.FC<{ code: string; language: string; highlightedHtml?: st
           {copied ? (
             <>
               <Check className="w-3.5 h-3.5 text-emerald-400" />
-              <span className="text-[11px] text-emerald-400 font-medium">Copied!</span>
+              <span className="text-[9px] text-emerald-400 font-medium">Copied!</span>
             </>
           ) : (
             <>
               <Copy className="w-3.5 h-3.5" />
-              <span className="text-[11px]">Copy code</span>
+              <span className="text-[9px]">Copy code</span>
             </>
           )}
         </button>

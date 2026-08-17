@@ -49,7 +49,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-6 text-center max-w-4xl mx-auto w-full animate-in fade-in duration-300">
       {/* Ambient Decorative Glow */}
-      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-cyan-500/10 blur-[120px] rounded-full pointer-events-none -z-10" />
+      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-cyan-500/10 blur-[96px] rounded-full pointer-events-none -z-10" />
 
       {/* Hero Badge */}
       <div className="mb-6 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-900/90 border border-slate-800 backdrop-blur-md shadow-lg shadow-black/40">
@@ -110,7 +110,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                   {card.description}
                 </p>
               </div>
-              <span className="text-[11px] text-cyan-400 font-medium mt-4 inline-flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <span className="text-[9px] text-cyan-400 font-medium mt-4 inline-flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 Use prompt &rarr;
               </span>
             </button>

@@ -11,6 +11,14 @@ export default defineConfig({
   ],
   server: {
     proxy: {
+      '/api/personalai': {
+        target: 'http://127.0.0.1:3847',
+        changeOrigin: true,
+      },
+      '/health': {
+        target: 'http://127.0.0.1:3847',
+        changeOrigin: true,
+      },
       '/api': {
         target: 'http://127.0.0.1:11434',
         changeOrigin: true,

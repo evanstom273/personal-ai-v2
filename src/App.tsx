@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import type {
   ChatMessage,
   ChatSession,
@@ -12,56 +12,76 @@ import {
   DEFAULT_SETTINGS,
   FALLBACK_MODELS,
 } from './services/ollamaService'
+import {
+  checkServerHealth,
+  fetchSessions,
+  createSession,
+  updateSession,
+  deleteSession,
+  clearSessionMessages,
+  createMessage,
+  updateMessage,
+  deleteMessage as deleteServerMessage,
+  fetchServerSettings,
+  saveServerSettings,
+  cachePersonalaiHost,
+  loadCachedPersonalaiHost,
+} from './services/personalaiApi'
 import { Header } from './components/Header'
 import { Sidebar } from './components/Sidebar'
 import { WelcomeScreen } from './components/WelcomeScreen'
 import { ChatMessageItem } from './components/ChatMessageItem'
 import { ChatInput } from './components/ChatInput'
 import { SettingsModal } from './components/SettingsModal'
+import { ServerOfflineBanner } from './components/ServerOfflineBanner'
 
-const STORAGE_KEYS = {
+const LEGACY_STORAGE_KEYS = {
   SESSIONS: 'personal_ai_chat_sessions',
   SETTINGS: 'personal_ai_chat_settings',
   ACTIVE_MODEL: 'personal_ai_active_model',
 }
 
-function loadSettingsFromStorage(): ChatSettings {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEYS.SETTINGS)
-    if (raw) {
-      return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) }
-    }
-  } catch (e) {
-    console.error('Failed to parse saved settings', e)
-  }
-  return DEFAULT_SETTINGS
+function getPersonalaiHost(settings: ChatSettings): string {
+  return settings.personalaiHost || loadCachedPersonalaiHost()
 }
 
 function App() {
   const [models, setModels] = useState<LocalModel[]>(FALLBACK_MODELS)
-  const [selectedModel, setSelectedModel] = useState<string>('qwen3.5:4b')
+  const [selectedModel, setSelectedModel] = useState<string>(DEFAULT_SETTINGS.activeModel)
   const [sessions, setSessions] = useState<ChatSession[]>([])
   const [activeSessionId, setActiveSessionId] = useState<string>('')
-  const [settings, setSettings] = useState<ChatSettings>(loadSettingsFromStorage)
+  const [settings, setSettings] = useState<ChatSettings>(DEFAULT_SETTINGS)
 
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(true)
   const [settingsOpen, setSettingsOpen] = useState<boolean>(false)
   const [isStreaming, setIsStreaming] = useState<boolean>(false)
+  const [serverOnline, setServerOnline] = useState<boolean>(false)
+  const [serverChecking, setServerChecking] = useState<boolean>(true)
 
   const abortControllerRef = useRef<AbortController | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const initialLoadDoneRef = useRef(false)
   const skipHostRefreshRef = useRef(true)
-  const skipSettingsPersistRef = useRef(true)
+  const streamPersistTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
 
-  const persistSettings = (nextSettings: ChatSettings) => {
-    localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(nextSettings))
-  }
+  const persistSettingsToServer = useCallback(
+    async (nextSettings: ChatSettings) => {
+      const host = nextSettings.personalaiHost || loadCachedPersonalaiHost()
+      if (!host) return
+      try {
+        await saveServerSettings(host, nextSettings)
+      } catch (err) {
+        console.error('Failed to save settings to server:', err)
+      }
+    },
+    []
+  )
 
   const updateSettings = (partial: Partial<ChatSettings>) => {
     setSettings((prev) => {
       const next = { ...prev, ...partial }
-      persistSettings(next)
+      if (next.personalaiHost) cachePersonalaiHost(next.personalaiHost)
+      persistSettingsToServer(next)
       return next
     })
   }
@@ -77,140 +97,269 @@ function App() {
     }
   }
 
-  // 1. Initial Load: Models, Sessions
-  useEffect(() => {
-    const savedModel = localStorage.getItem(STORAGE_KEYS.ACTIVE_MODEL)
+  const migrateLegacyLocalStorage = async (host: string): Promise<ChatSession[]> => {
+    const rawSessions = localStorage.getItem(LEGACY_STORAGE_KEYS.SESSIONS)
+    if (!rawSessions) return []
 
-    if (savedModel) {
-      setSelectedModel(savedModel)
-    }
-
-    fetchLocalModels(settings.ollamaHost).then((fetchedModels) => {
-      applyFetchedModels(fetchedModels, savedModel)
-    })
-
-    skipHostRefreshRef.current = false
-    initialLoadDoneRef.current = true
-
-    const savedSessions = localStorage.getItem(STORAGE_KEYS.SESSIONS)
-    if (savedSessions) {
-      try {
-        const parsed: ChatSession[] = JSON.parse(savedSessions)
-        setSessions(parsed)
-        if (parsed.length > 0) {
-          setActiveSessionId(parsed[0].id)
+    try {
+      const parsed: ChatSession[] = JSON.parse(rawSessions)
+      for (const session of parsed) {
+        await createSession(host, {
+          id: session.id,
+          title: session.title,
+          model: session.model,
+          systemPrompt: session.systemPrompt,
+        })
+        for (const msg of session.messages) {
+          await createMessage(host, session.id, {
+            id: msg.id,
+            role: msg.role,
+            content: msg.content,
+            thinkingContent: msg.thinkingContent,
+            model: msg.model,
+            tokensPerSec: msg.tokensPerSec,
+            durationMs: msg.durationMs,
+            isError: msg.isError,
+            streamStatus: 'complete',
+            fileAttachments: msg.fileAttachments,
+          })
         }
-      } catch (e) {
-        console.error('Failed to parse saved sessions', e)
       }
+
+      const rawSettings = localStorage.getItem(LEGACY_STORAGE_KEYS.SETTINGS)
+      if (rawSettings) {
+        const legacySettings = JSON.parse(rawSettings) as Partial<ChatSettings>
+        await saveServerSettings(host, { ...DEFAULT_SETTINGS, ...legacySettings })
+      }
+
+      localStorage.removeItem(LEGACY_STORAGE_KEYS.SESSIONS)
+      localStorage.removeItem(LEGACY_STORAGE_KEYS.SETTINGS)
+      localStorage.removeItem(LEGACY_STORAGE_KEYS.ACTIVE_MODEL)
+
+      return await fetchSessions(host)
+    } catch (err) {
+      console.error('Legacy migration failed:', err)
+      return []
     }
-  }, [])
+  }
 
-  useEffect(() => {
-    if (skipHostRefreshRef.current || !initialLoadDoneRef.current) return
+  const connectToServer = useCallback(async () => {
+    setServerChecking(true)
+    const host = settings.personalaiHost || loadCachedPersonalaiHost()
+    const health = await checkServerHealth(host)
 
-    fetchLocalModels(settings.ollamaHost).then((fetchedModels) => {
-      applyFetchedModels(fetchedModels)
-    })
-  }, [settings.ollamaHost])
-
-  // 2. Persist Sessions to localStorage
-  useEffect(() => {
-    if (sessions.length > 0) {
-      localStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(sessions))
+    if (!health.ok) {
+      setServerOnline(false)
+      setServerChecking(false)
+      return false
     }
-  }, [sessions])
 
-  // 3. Persist Settings (after mount — never overwrite saved settings on first render)
-  useEffect(() => {
-    if (skipSettingsPersistRef.current) {
-      skipSettingsPersistRef.current = false
-      return
+    setServerOnline(true)
+
+    try {
+      const serverSettings = await fetchServerSettings(host)
+      const mergedSettings: ChatSettings = {
+        ...DEFAULT_SETTINGS,
+        ...serverSettings,
+        personalaiHost: serverSettings.personalaiHost || host,
+      }
+      if (mergedSettings.personalaiHost) cachePersonalaiHost(mergedSettings.personalaiHost)
+      setSettings(mergedSettings)
+
+      let loadedSessions = await fetchSessions(host)
+      if (loadedSessions.length === 0) {
+        const migrated = await migrateLegacyLocalStorage(host)
+        if (migrated.length > 0) loadedSessions = migrated
+      }
+
+      setSessions(loadedSessions)
+      if (loadedSessions.length > 0) {
+        setActiveSessionId(loadedSessions[0].id)
+      }
+
+      const modelPref =
+        mergedSettings.activeModel ||
+        localStorage.getItem(LEGACY_STORAGE_KEYS.ACTIVE_MODEL) ||
+        DEFAULT_SETTINGS.activeModel
+      setSelectedModel(modelPref)
+
+      const fetchedModels = await fetchLocalModels(
+        mergedSettings.ollamaHost,
+        mergedSettings.personalaiHost
+      )
+      applyFetchedModels(fetchedModels, modelPref)
+    } catch (err) {
+      console.error('Failed to load data from PersonalAI server:', err)
+      setServerOnline(false)
     }
-    persistSettings(settings)
+
+    setServerChecking(false)
+    return true
   }, [settings])
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.ACTIVE_MODEL, selectedModel)
-  }, [selectedModel])
+    connectToServer().then(() => {
+      skipHostRefreshRef.current = false
+      initialLoadDoneRef.current = true
+    })
+  }, [])
 
-  // 4. Auto scroll to bottom
-  const activeSession = sessions.find((s) => s.id === activeSessionId)
-  const messages = activeSession?.messages || []
+  useEffect(() => {
+    if (skipHostRefreshRef.current || !initialLoadDoneRef.current || !serverOnline) return
+
+    fetchLocalModels(settings.ollamaHost, settings.personalaiHost).then((fetchedModels) => {
+      applyFetchedModels(fetchedModels)
+    })
+  }, [settings.ollamaHost, settings.personalaiHost, serverOnline])
+
+  useEffect(() => {
+    if (!serverOnline || !initialLoadDoneRef.current) return
+    const host = getPersonalaiHost(settings)
+    saveServerSettings(host, { ...settings, activeModel: selectedModel })
+  }, [selectedModel])
 
   useEffect(() => {
     if (settings.autoScroll) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
     }
-  }, [messages, isStreaming, settings.autoScroll])
+  }, [sessions, activeSessionId, isStreaming, settings.autoScroll])
 
-  // Helper: Create a New Chat Session
-  const createNewSession = (initialPrompt?: string): string => {
-    const id = `session_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`
+  const activeSession = sessions.find((s) => s.id === activeSessionId)
+  const messages = activeSession?.messages || []
+
+  const scheduleMessagePersist = (
+    messageId: string,
+    data: {
+      content?: string
+      thinkingContent?: string
+      tokensPerSec?: number
+      durationMs?: number
+      isError?: boolean
+      streamStatus?: 'streaming' | 'complete' | 'error'
+    }
+  ) => {
+    const host = getPersonalaiHost(settings)
+    if (!host || !serverOnline) return
+
+    const timers = streamPersistTimersRef.current
+    const existing = timers.get(messageId)
+    if (existing) clearTimeout(existing)
+
+    timers.set(
+      messageId,
+      setTimeout(async () => {
+        timers.delete(messageId)
+        try {
+          await updateMessage(host, messageId, data)
+        } catch (err) {
+          console.error('Failed to persist message update:', err)
+        }
+      }, 400)
+    )
+  }
+
+  const flushMessagePersist = async (
+    messageId: string,
+    data: {
+      content?: string
+      thinkingContent?: string
+      tokensPerSec?: number
+      durationMs?: number
+      isError?: boolean
+      streamStatus?: 'streaming' | 'complete' | 'error'
+    }
+  ) => {
+    const timers = streamPersistTimersRef.current
+    const existing = timers.get(messageId)
+    if (existing) {
+      clearTimeout(existing)
+      timers.delete(messageId)
+    }
+
+    const host = getPersonalaiHost(settings)
+    if (!host || !serverOnline) return
+
+    try {
+      await updateMessage(host, messageId, data)
+    } catch (err) {
+      console.error('Failed to persist message:', err)
+    }
+  }
+
+  const createNewSession = async (initialPrompt?: string): Promise<string> => {
+    if (!serverOnline) throw new Error('PersonalAI server is offline')
+
+    const host = getPersonalaiHost(settings)
     const title = initialPrompt
       ? initialPrompt.length > 30
         ? `${initialPrompt.substring(0, 30)}...`
         : initialPrompt
       : 'New Chat'
 
-    const newSession: ChatSession = {
-      id,
+    const session = await createSession(host, {
       title,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-      messages: [],
       model: selectedModel,
-    }
+    })
 
-    setSessions((prev) => [newSession, ...prev])
-    setActiveSessionId(id)
-    return id
+    setSessions((prev) => [session, ...prev])
+    setActiveSessionId(session.id)
+    return session.id
   }
 
-  // Handle Select Model
   const handleSelectModel = (modelName: string) => {
     setSelectedModel(modelName)
     if (activeSessionId) {
       setSessions((prev) =>
         prev.map((s) => (s.id === activeSessionId ? { ...s, model: modelName } : s))
       )
-    }
-  }
-
-  // Handle Delete Session
-  const handleDeleteSession = (id: string) => {
-    setSessions((prev) => prev.filter((s) => s.id !== id))
-    if (activeSessionId === id) {
-      const remaining = sessions.filter((s) => s.id !== id)
-      if (remaining.length > 0) {
-        setActiveSessionId(remaining[0].id)
-      } else {
-        setActiveSessionId('')
+      const host = getPersonalaiHost(settings)
+      if (serverOnline) {
+        updateSession(host, activeSessionId, { model: modelName }).catch(console.error)
       }
     }
   }
 
-  // Handle Rename Session
-  const handleRenameSession = (id: string, newTitle: string) => {
+  const handleDeleteSession = async (id: string) => {
+    if (!serverOnline) return
+    const host = getPersonalaiHost(settings)
+    await deleteSession(host, id)
+
+    setSessions((prev) => prev.filter((s) => s.id !== id))
+    if (activeSessionId === id) {
+      const remaining = sessions.filter((s) => s.id !== id)
+      setActiveSessionId(remaining.length > 0 ? remaining[0].id : '')
+    }
+  }
+
+  const handleRenameSession = async (id: string, newTitle: string) => {
     setSessions((prev) =>
       prev.map((s) => (s.id === id ? { ...s, title: newTitle, updatedAt: Date.now() } : s))
     )
+    if (!serverOnline) return
+    const host = getPersonalaiHost(settings)
+    await updateSession(host, id, { title: newTitle })
   }
 
-  // Handle Clear Current Chat
-  const handleClearCurrentChat = () => {
-    if (!activeSessionId) return
+  const handleClearCurrentChat = async () => {
+    if (!activeSessionId || !serverOnline) return
+    const host = getPersonalaiHost(settings)
+    await clearSessionMessages(host, activeSessionId)
     setSessions((prev) =>
       prev.map((s) => (s.id === activeSessionId ? { ...s, messages: [] } : s))
     )
   }
 
-  // Send Message Logic
   const handleSendMessage = async (text: string, files: FileAttachment[] = []) => {
+    if (!serverOnline) return
+
     let currentId = activeSessionId
     if (!currentId) {
-      currentId = createNewSession(text)
+      currentId = await createNewSession(text)
     }
+
+    const host = getPersonalaiHost(settings)
+    const currentSession = sessions.find((s) => s.id === currentId)
+    const wasFirstMessage = !currentSession || currentSession.messages.length === 0
 
     const userMsgId = `msg_user_${Date.now()}`
     const assistantMsgId = `msg_ast_${Date.now() + 1}`
@@ -231,7 +380,6 @@ function App() {
       model: selectedModel,
     }
 
-    // Update active session messages
     setSessions((prev) =>
       prev.map((session) => {
         if (session.id === currentId) {
@@ -254,13 +402,37 @@ function App() {
       })
     )
 
-    // Start streaming
+    try {
+      await createMessage(host, currentId, {
+        id: userMsgId,
+        role: 'user',
+        content: text,
+        fileAttachments: files.length > 0 ? files : undefined,
+        streamStatus: 'complete',
+      })
+
+      await createMessage(host, currentId, {
+        id: assistantMsgId,
+        role: 'assistant',
+        content: '',
+        model: selectedModel,
+        streamStatus: 'streaming',
+      })
+
+      if (text && wasFirstMessage) {
+        const autoTitle = text.length > 35 ? `${text.substring(0, 35)}...` : text
+        await updateSession(host, currentId, { title: autoTitle })
+      }
+    } catch (err) {
+      console.error('Failed to persist messages:', err)
+      setServerOnline(false)
+      return
+    }
+
     setIsStreaming(true)
     const abortController = new AbortController()
     abortControllerRef.current = abortController
 
-    // Get current message history for completion context
-    const currentSession = sessions.find((s) => s.id === currentId)
     const historyMessages = currentSession ? [...currentSession.messages, userMessage] : [userMessage]
 
     await streamChatCompletion(
@@ -286,8 +458,13 @@ function App() {
               return session
             })
           )
+          scheduleMessagePersist(assistantMsgId, {
+            content: mainText,
+            thinkingContent: thinkingText || undefined,
+            streamStatus: 'streaming',
+          })
         },
-        onDone: (_, thinkingText, mainText, metrics) => {
+        onDone: async (_, thinkingText, mainText, metrics) => {
           setSessions((prev) =>
             prev.map((session) => {
               if (session.id === currentId) {
@@ -307,11 +484,21 @@ function App() {
               return session
             })
           )
+          await flushMessagePersist(assistantMsgId, {
+            content: mainText,
+            thinkingContent: thinkingText || undefined,
+            tokensPerSec: metrics.tokensPerSec,
+            durationMs: metrics.durationMs,
+            streamStatus: 'complete',
+          })
           setIsStreaming(false)
           abortControllerRef.current = null
         },
-        onError: (error) => {
+        onError: async (error) => {
           console.error('Chat completion error:', error)
+          const errorContent =
+            `⚠️ **Error connecting to local model (${selectedModel})**: ${error.message}\n\nPlease check if Ollama is running or if the model path is loaded.`
+
           setSessions((prev) =>
             prev.map((session) => {
               if (session.id === currentId) {
@@ -319,9 +506,7 @@ function App() {
                   m.id === assistantMsgId
                     ? {
                         ...m,
-                        content:
-                          m.content ||
-                          `⚠️ **Error connecting to local model (${selectedModel})**: ${error.message}\n\nPlease check if Ollama is running or if the model path is loaded.`,
+                        content: m.content || errorContent,
                         isError: true,
                       }
                     : m
@@ -331,6 +516,11 @@ function App() {
               return session
             })
           )
+          await flushMessagePersist(assistantMsgId, {
+            content: errorContent,
+            isError: true,
+            streamStatus: 'error',
+          })
           setIsStreaming(false)
           abortControllerRef.current = null
         },
@@ -339,18 +529,25 @@ function App() {
     )
   }
 
-  // Handle Stop Streaming
-  const handleStopStreaming = () => {
+  const handleStopStreaming = async () => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort()
       abortControllerRef.current = null
       setIsStreaming(false)
+
+      const lastAssistant = activeSession?.messages.filter((m) => m.role === 'assistant').at(-1)
+      if (lastAssistant && serverOnline) {
+        await flushMessagePersist(lastAssistant.id, {
+          content: lastAssistant.content,
+          thinkingContent: lastAssistant.thinkingContent,
+          streamStatus: 'complete',
+        })
+      }
     }
   }
 
-  // Handle Regenerate Assistant Message
   const handleRegenerate = async () => {
-    if (!activeSession || activeSession.messages.length === 0 || isStreaming) return
+    if (!activeSession || activeSession.messages.length === 0 || isStreaming || !serverOnline) return
     const lastUserIndex = [...activeSession.messages]
       .reverse()
       .findIndex((m) => m.role === 'user')
@@ -358,6 +555,12 @@ function App() {
 
     const actualUserIndex = activeSession.messages.length - 1 - lastUserIndex
     const truncatedMessages = activeSession.messages.slice(0, actualUserIndex + 1)
+
+    const host = getPersonalaiHost(settings)
+    const removed = activeSession.messages.slice(actualUserIndex + 1)
+    for (const msg of removed) {
+      await deleteServerMessage(host, msg.id).catch(console.error)
+    }
 
     const assistantMsgId = `msg_ast_${Date.now()}`
     const placeholderAssistantMessage: ChatMessage = {
@@ -380,6 +583,14 @@ function App() {
         return session
       })
     )
+
+    await createMessage(host, activeSessionId, {
+      id: assistantMsgId,
+      role: 'assistant',
+      content: '',
+      model: selectedModel,
+      streamStatus: 'streaming',
+    })
 
     setIsStreaming(true)
     const abortController = new AbortController()
@@ -408,8 +619,13 @@ function App() {
               return session
             })
           )
+          scheduleMessagePersist(assistantMsgId, {
+            content: mainText,
+            thinkingContent: thinkingText || undefined,
+            streamStatus: 'streaming',
+          })
         },
-        onDone: (_, thinkingText, mainText, metrics) => {
+        onDone: async (_, thinkingText, mainText, metrics) => {
           setSessions((prev) =>
             prev.map((session) => {
               if (session.id === activeSessionId) {
@@ -429,11 +645,23 @@ function App() {
               return session
             })
           )
+          await flushMessagePersist(assistantMsgId, {
+            content: mainText,
+            thinkingContent: thinkingText || undefined,
+            tokensPerSec: metrics.tokensPerSec,
+            durationMs: metrics.durationMs,
+            streamStatus: 'complete',
+          })
           setIsStreaming(false)
           abortControllerRef.current = null
         },
-        onError: (error) => {
+        onError: async (error) => {
           console.error('Regenerate error:', error)
+          await flushMessagePersist(assistantMsgId, {
+            content: error.message,
+            isError: true,
+            streamStatus: 'error',
+          })
           setIsStreaming(false)
           abortControllerRef.current = null
         },
@@ -442,19 +670,17 @@ function App() {
     )
   }
 
-  // Handle Edit User Prompt
   const handleEditPrompt = (newText: string) => {
     handleSendMessage(newText)
   }
 
-  // Handle Delete Single Message
-  const handleDeleteMessage = (msgId: string) => {
-    if (!activeSessionId) return
+  const handleDeleteMessage = async (msgId: string) => {
+    if (!activeSessionId || !serverOnline) return
+    const host = getPersonalaiHost(settings)
+    await deleteServerMessage(host, msgId)
     setSessions((prev) =>
       prev.map((s) =>
-        s.id === activeSessionId
-          ? { ...s, messages: s.messages.filter((m) => m.id !== msgId) }
-          : s
+        s.id === activeSessionId ? { ...s, messages: s.messages.filter((m) => m.id !== msgId) } : s
       )
     )
   }
@@ -465,40 +691,61 @@ function App() {
         settings.theme === 'light' ? 'theme-light' : ''
       }`}
     >
-      {/* Sidebar Navigation */}
       <Sidebar
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         sessions={sessions}
         activeSessionId={activeSessionId}
         onSelectSession={(id) => setActiveSessionId(id)}
-        onNewChat={() => createNewSession()}
-        onDeleteSession={handleDeleteSession}
-        onRenameSession={handleRenameSession}
+        onNewChat={() => {
+          if (serverOnline) createNewSession().catch(console.error)
+        }}
+        onDeleteSession={(id) => {
+          handleDeleteSession(id).catch(console.error)
+        }}
+        onRenameSession={(id, title) => {
+          handleRenameSession(id, title).catch(console.error)
+        }}
         models={models}
         selectedModel={selectedModel}
         onOpenSettings={() => setSettingsOpen(true)}
       />
 
-      {/* Main View Area */}
       <div className="flex-1 flex flex-col min-w-0 min-h-0 h-full overflow-hidden">
+        {!serverOnline && !serverChecking && (
+          <ServerOfflineBanner
+            onRetry={() => connectToServer()}
+            isRetrying={serverChecking}
+          />
+        )}
+
         <Header
           sidebarOpen={sidebarOpen}
           setSidebarOpen={setSidebarOpen}
-          onNewChat={() => createNewSession()}
+          onNewChat={() => {
+            if (serverOnline) createNewSession().catch(console.error)
+          }}
           onOpenSettings={() => setSettingsOpen(true)}
-          onClearCurrentChat={handleClearCurrentChat}
+          onClearCurrentChat={() => {
+            handleClearCurrentChat().catch(console.error)
+          }}
           settings={settings}
           onUpdateSettings={updateSettings}
           hasMessages={messages.length > 0}
         />
 
         <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-800 flex flex-col">
-          {messages.length === 0 ? (
+          {serverChecking ? (
+            <div className="flex-1 flex items-center justify-center text-slate-400 text-sm">
+              Connecting to PersonalAI server...
+            </div>
+          ) : messages.length === 0 ? (
             <WelcomeScreen
               models={models}
               selectedModel={selectedModel}
-              onSelectPrompt={(promptText) => handleSendMessage(promptText)}
+              onSelectPrompt={(promptText) => {
+                if (serverOnline) handleSendMessage(promptText)
+              }}
             />
           ) : (
             <div className="flex-1 pb-4">
@@ -509,7 +756,9 @@ function App() {
                   isLast={idx === messages.length - 1}
                   isStreaming={isStreaming}
                   onRegenerate={idx === messages.length - 1 ? handleRegenerate : undefined}
-                  onDelete={handleDeleteMessage}
+                  onDelete={(id) => {
+                    handleDeleteMessage(id).catch(console.error)
+                  }}
                   onEditPrompt={handleEditPrompt}
                 />
               ))}
@@ -527,17 +776,18 @@ function App() {
           onSelectModel={handleSelectModel}
           settings={settings}
           onUpdateSettings={updateSettings}
+          disabled={!serverOnline || serverChecking}
         />
       </div>
 
-      {/* Settings Modal */}
       <SettingsModal
         isOpen={settingsOpen}
         onClose={() => setSettingsOpen(false)}
         settings={settings}
         onSaveSettings={(newSettings) => {
           setSettings(newSettings)
-          persistSettings(newSettings)
+          if (newSettings.personalaiHost) cachePersonalaiHost(newSettings.personalaiHost)
+          persistSettingsToServer(newSettings)
         }}
         onModelsRefresh={(fetchedModels) => {
           setModels(fetchedModels)

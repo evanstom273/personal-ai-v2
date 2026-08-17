@@ -5,9 +5,13 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:server": "npm run dev --prefix server",
+    "dev:all": "npm run dev:server & npm run dev",
     "build": "tsc -b && vite build",
+    "build:server": "npm run build --prefix server",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "postinstall": "npm install --prefix server"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.3",

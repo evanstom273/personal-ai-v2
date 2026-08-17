@@ -6,6 +6,7 @@ import {
 	getEndpointLabel,
 	type OllamaEndpointKind,
 } from '../utils/ollamaEndpoint'
+import { getEffectiveOllamaHost } from '../utils/personalaiEndpoint'
 
 export const DEFAULT_SETTINGS: ChatSettings = {
   systemPrompt: 'You are a helpful, intelligent, and precise AI assistant powered by local models.',
@@ -15,10 +16,12 @@ export const DEFAULT_SETTINGS: ChatSettings = {
   contextWindow: 4096,
   theme: 'dark',
   ollamaHost: '',
+  personalaiHost: '',
   tailscaleMachine: '',
   tailscaleTailnet: '',
   autoScroll: true,
   enableThinking: true,
+  activeModel: 'qwen3.5:4b',
 }
 
 export const FALLBACK_MODELS: LocalModel[] = [
@@ -158,8 +161,8 @@ export async function testOllamaConnection(host: string): Promise<OllamaConnecti
   }
 }
 
-export async function fetchLocalModels(host = ''): Promise<LocalModel[]> {
-  const endpoint = buildOllamaApiUrl(host, '/api/tags')
+export async function fetchLocalModels(host = '', personalaiHost = ''): Promise<LocalModel[]> {
+  const endpoint = buildOllamaApiUrl(getEffectiveOllamaHost(host, personalaiHost), '/api/tags')
 
   try {
     const res = await fetch(endpoint)
@@ -203,7 +206,8 @@ export async function streamChatCompletion(
   callbacks: StreamCallbacks,
   signal?: AbortSignal
 ): Promise<void> {
-  const endpoint = buildOllamaApiUrl(settings.ollamaHost, '/api/chat')
+  const ollamaHost = getEffectiveOllamaHost(settings.ollamaHost, settings.personalaiHost)
+  const endpoint = buildOllamaApiUrl(ollamaHost, '/api/chat')
 
   // Format messages for Ollama API
   const formattedMessages: { role: string; content: string; images?: string[] }[] = []

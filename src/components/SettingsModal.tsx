@@ -12,9 +12,11 @@ import {
 	AlertCircle,
 	Network,
 	Link2,
+	Database,
 } from 'lucide-react'
 import type { ChatSettings, LocalModel } from '../types/chat'
 import { DEFAULT_SETTINGS, testOllamaConnection } from '../services/ollamaService'
+import { testPersonalaiConnection } from '../services/personalaiApi'
 import {
 	buildTailscaleServeUrl,
 	classifyOllamaHost,
@@ -45,6 +47,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 	const [testStatus, setTestStatus] = useState<TestStatus>('idle')
 	const [testMessage, setTestMessage] = useState('')
 	const [testHint, setTestHint] = useState('')
+	const [serverTestStatus, setServerTestStatus] = useState<TestStatus>('idle')
+	const [serverTestMessage, setServerTestMessage] = useState('')
+	const [serverTestHint, setServerTestHint] = useState('')
 
 	useEffect(() => {
 		if (isOpen) {
@@ -55,6 +60,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 			setTestStatus('idle')
 			setTestMessage('')
 			setTestHint('')
+			setServerTestStatus('idle')
+			setServerTestMessage('')
+			setServerTestHint('')
 		}
 	}, [isOpen, settings])
 
@@ -83,14 +91,46 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 	const handleApplyTailscaleUrl = () => {
 		try {
 			const url = buildTailscaleServeUrl(formData.tailscaleMachine, formData.tailscaleTailnet)
-			setFormData({ ...formData, ollamaHost: url })
+			setFormData({ ...formData, personalaiHost: url, ollamaHost: '' })
+			setServerTestStatus('idle')
 			setTestStatus('idle')
 			setTestMessage('')
-			setTestHint('Tailscale Serve URL applied. Run Test Connection after starting serve on your PC.')
-		} catch (err) {
-			setTestStatus('error')
-			setTestMessage(err instanceof Error ? err.message : 'Invalid Tailscale settings')
 			setTestHint('')
+			setServerTestHint('Tailscale Serve URL applied for PersonalAI backend. Start serve on port 3847, then test.')
+		} catch (err) {
+			setServerTestStatus('error')
+			setServerTestMessage(err instanceof Error ? err.message : 'Invalid Tailscale settings')
+			setServerTestHint('')
+		}
+	}
+
+	const handlePersonalaiHostChange = (value: string) => {
+		const parsed = parseTailscaleServeUrl(value)
+		setFormData({
+			...formData,
+			personalaiHost: value,
+			tailscaleMachine: parsed?.machine ?? formData.tailscaleMachine,
+			tailscaleTailnet: parsed?.tailnet ?? formData.tailscaleTailnet,
+		})
+		setServerTestStatus('idle')
+	}
+
+	const handleTestServerConnection = async () => {
+		setServerTestStatus('testing')
+		setServerTestMessage('')
+		setServerTestHint('')
+
+		const result = await testPersonalaiConnection(formData.personalaiHost)
+
+		if (result.ok) {
+			setServerTestStatus('success')
+			setServerTestMessage(
+				`PersonalAI server online · ${result.latencyMs}ms${result.ollama ? ' · Ollama reachable' : ' · Ollama not detected'}`
+			)
+		} else {
+			setServerTestStatus('error')
+			setServerTestMessage(result.error || 'Server connection failed')
+			setServerTestHint('Start the PersonalAI backend on your laptop and verify Tailscale Serve.')
 		}
 	}
 
@@ -181,6 +221,72 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 						<span className="text-[8px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">
 							Ollama Engine
 						</span>
+					</div>
+
+					<div className="space-y-3 p-4 rounded-xl bg-slate-900/60 border border-slate-800">
+						<div className="flex items-center gap-2">
+							<Database className="w-4 h-4 text-emerald-400" />
+							<h4 className="font-semibold text-slate-100 text-sm">PersonalAI Server (SQLite)</h4>
+						</div>
+
+						<div className="space-y-2">
+							<label className="font-semibold text-slate-200 flex items-center gap-2">
+								<Server className="w-3.5 h-3.5 text-emerald-400" />
+								PersonalAI Backend URL
+							</label>
+							<div className="flex gap-2">
+								<input
+									type="url"
+									value={formData.personalaiHost}
+									onChange={(e) => handlePersonalaiHostChange(e.target.value)}
+									placeholder="https://desktop.tailnet.ts.net or empty for local dev proxy"
+									className="flex-1 min-w-0 p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 placeholder-slate-500 font-mono text-xs focus:outline-none focus:border-emerald-500"
+								/>
+								<button
+									type="button"
+									onClick={handleTestServerConnection}
+									disabled={serverTestStatus === 'testing'}
+									className="shrink-0 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold transition-colors disabled:opacity-60 flex items-center gap-1.5"
+								>
+									{serverTestStatus === 'testing' ? (
+										<Loader2 className="w-3.5 h-3.5 animate-spin" />
+									) : (
+										<Link2 className="w-3.5 h-3.5" />
+									)}
+									<span>Test</span>
+								</button>
+							</div>
+							<p className="text-[9px] text-slate-500">
+								Central persistence on your laptop. Empty = local dev proxy (<code className="font-mono">/api/personalai</code> → 127.0.0.1:3847).
+								When using the backend, leave Ollama Host empty — the server proxies Ollama locally.
+							</p>
+
+							{serverTestStatus === 'success' && (
+								<div className="flex items-start gap-2 p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-[9px]">
+									<Check className="w-4 h-4 shrink-0 mt-0.5" />
+									<p className="font-semibold">{serverTestMessage}</p>
+								</div>
+							)}
+
+							{serverTestStatus === 'error' && (
+								<div className="flex items-start gap-2 p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-[9px]">
+									<AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+									<div>
+										<p className="font-semibold">{serverTestMessage}</p>
+										{serverTestHint && <p className="text-rose-200/80 mt-0.5">{serverTestHint}</p>}
+									</div>
+								</div>
+							)}
+
+							<div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 text-[9px] text-slate-400 space-y-2 font-mono leading-relaxed">
+								<p className="text-slate-300 font-sans font-semibold text-xs">On your laptop:</p>
+								<p>npm run dev:server</p>
+								<p>tailscale serve --bg --https=443 http://127.0.0.1:3847</p>
+								<p className="text-slate-500 font-sans">
+									Data stored in <code className="font-mono">PersonalAI-Data/personalai.db</code> (configurable via PERSONALAI_DATA_DIR).
+								</p>
+							</div>
+						</div>
 					</div>
 
 					<div className="space-y-3 p-4 rounded-xl bg-slate-900/60 border border-slate-800">
@@ -291,12 +397,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 							</button>
 
 							<div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 text-[9px] text-slate-400 space-y-2 font-mono leading-relaxed">
-								<p className="text-slate-300 font-sans font-semibold text-xs">On your Ollama PC:</p>
+								<p className="text-slate-300 font-sans font-semibold text-xs">Direct Ollama only (optional):</p>
 								<p>tailscale serve --bg --https=443 http://127.0.0.1:11434</p>
 								<p>setx OLLAMA_ORIGINS &quot;{appOrigin}&quot;</p>
 								<p className="text-slate-500 font-sans">
-									Install Tailscale on your phone and sign into the same tailnet. Then apply your machine
-									name above and test the connection.
+									Skip this if the PersonalAI backend proxies Ollama. Install Tailscale on your phone and sign into the same tailnet.
 								</p>
 							</div>
 						</div>

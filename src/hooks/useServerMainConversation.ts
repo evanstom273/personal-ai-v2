@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { MAIN_CONVERSATION_ID } from '@/services/gemini/constants'
 import {
 	checkServerHealth,
@@ -59,18 +59,26 @@ function writeMainSessionId(sessionId: string): void {
 
 export function useServerMainConversation(defaultModelId: string) {
 	const [conversation, setConversation] = useState<ConversationRecord | null>(null)
+	const conversationRef = useRef<ConversationRecord | null>(null)
+	const defaultModelIdRef = useRef(defaultModelId)
 	const [isLoading, setIsLoading] = useState(true)
 	const [serverOnline, setServerOnline] = useState(false)
 	const [sessionId, setSessionId] = useState<string | null>(null)
 
 	const host = loadCachedPersonalaiHost()
+	defaultModelIdRef.current = defaultModelId
+
+	const syncConversation = useCallback((next: ConversationRecord | null) => {
+		conversationRef.current = next
+		setConversation(next)
+	}, [])
 
 	const loadConversation = useCallback(async (): Promise<void> => {
 		setIsLoading(true)
 		const health = await checkServerHealth(host)
 		if (!health.ok) {
 			setServerOnline(false)
-			setConversation(null)
+			syncConversation(null)
 			setSessionId(null)
 			setIsLoading(false)
 			return
@@ -87,15 +95,15 @@ export function useServerMainConversation(defaultModelId: string) {
 		if (!session) {
 			session = await createSession(host, {
 				title: 'Chat',
-				model: defaultModelId,
+				model: defaultModelIdRef.current,
 			})
 		}
 
 		writeMainSessionId(session.id)
 		setSessionId(session.id)
-		setConversation(toConversationRecord(session))
+		syncConversation(toConversationRecord(session))
 		setIsLoading(false)
-	}, [defaultModelId, host])
+	}, [host, syncConversation])
 
 	useEffect(() => {
 		void loadConversation()
@@ -104,21 +112,21 @@ export function useServerMainConversation(defaultModelId: string) {
 	const persistSession = useCallback(
 		async (next: ConversationRecord): Promise<void> => {
 			if (!sessionId) return
-			setConversation(next)
+			syncConversation(next)
 			await updateSession(host, sessionId, {
 				title: next.title,
 				model: next.modelId,
 			})
 		},
-		[host, sessionId],
+		[host, sessionId, syncConversation],
 	)
 
 	const ensureConversation = useCallback(async (): Promise<ConversationRecord> => {
-		if (conversation) return conversation
+		if (conversationRef.current) return conversationRef.current
 		await loadConversation()
-		if (conversation) return conversation
+		if (conversationRef.current) return conversationRef.current
 		throw new Error('PersonalAI server is offline')
-	}, [conversation, loadConversation])
+	}, [loadConversation])
 
 	const appendMessages = useCallback(
 		async (
@@ -127,11 +135,13 @@ export function useServerMainConversation(defaultModelId: string) {
 		): Promise<ConversationRecord> => {
 			if (!sessionId) throw new Error('No active chat session')
 
-			const existing = conversation ?? toConversationRecord(
-				await fetchSessions(host).then(
-					(sessions) => sessions.find((s) => s.id === sessionId)!,
-				),
-			)
+			let existing = conversationRef.current
+			if (!existing) {
+				const sessions = await fetchSessions(host)
+				const session = sessions.find((item) => item.id === sessionId)
+				if (!session) throw new Error('Session not found')
+				existing = toConversationRecord(session)
+			}
 
 			for (const message of newMessages) {
 				const fileAttachments =
@@ -162,10 +172,10 @@ export function useServerMainConversation(defaultModelId: string) {
 				messages: [...existing.messages, ...newMessages],
 				updatedAt: Date.now(),
 			}
-			setConversation(updated)
+			syncConversation(updated)
 			return updated
 		},
-		[conversation, host, sessionId],
+		[host, sessionId, syncConversation],
 	)
 
 	const updateMessageInSession = useCallback(
@@ -173,7 +183,8 @@ export function useServerMainConversation(defaultModelId: string) {
 			messageId: string,
 			patch: Partial<StoredMessage>,
 		): Promise<ConversationRecord> => {
-			if (!conversation) throw new Error('No conversation loaded')
+			const current = conversationRef.current
+			if (!current) throw new Error('No conversation loaded')
 
 			await updateMessage(host, messageId, {
 				content: patch.content,
@@ -181,69 +192,71 @@ export function useServerMainConversation(defaultModelId: string) {
 			})
 
 			const updated: ConversationRecord = {
-				...conversation,
-				messages: conversation.messages.map((message) =>
+				...current,
+				messages: current.messages.map((message) =>
 					message.id === messageId ? { ...message, ...patch } : message,
 				),
 				updatedAt: Date.now(),
 			}
-			setConversation(updated)
+			syncConversation(updated)
 			return updated
 		},
-		[conversation, host],
+		[host, syncConversation],
 	)
 
 	const truncateMessagesFrom = useCallback(
 		async (messageId: string): Promise<ConversationRecord> => {
-			if (!conversation || !sessionId) throw new Error('No conversation loaded')
+			const current = conversationRef.current
+			if (!current || !sessionId) throw new Error('No conversation loaded')
 
-			const messageIndex = conversation.messages.findIndex(
+			const messageIndex = current.messages.findIndex(
 				(message) => message.id === messageId,
 			)
 			if (messageIndex === -1) throw new Error('Message not found.')
 
-			const toRemove = conversation.messages.slice(messageIndex)
+			const toRemove = current.messages.slice(messageIndex)
 			for (const message of toRemove) {
 				await deleteMessage(host, message.id)
 			}
 
 			const updated: ConversationRecord = {
-				...conversation,
-				messages: conversation.messages.slice(0, messageIndex),
+				...current,
+				messages: current.messages.slice(0, messageIndex),
 				memoryArchiveCursor: Math.min(
-					conversation.memoryArchiveCursor,
+					current.memoryArchiveCursor,
 					messageIndex,
 				),
 				updatedAt: Date.now(),
 			}
-			setConversation(updated)
+			syncConversation(updated)
 			return updated
 		},
-		[conversation, host, sessionId],
+		[host, sessionId, syncConversation],
 	)
 
 	const clearConversation = useCallback(async (): Promise<ConversationRecord> => {
-		if (!conversation || !sessionId) throw new Error('No conversation loaded')
+		const current = conversationRef.current
+		if (!current || !sessionId) throw new Error('No conversation loaded')
 
-		for (const message of conversation.messages) {
+		for (const message of current.messages) {
 			await deleteMessage(host, message.id)
 		}
 
 		const cleared: ConversationRecord = {
-			...conversation,
+			...current,
 			messages: [],
 			memoryArchiveCursor: 0,
 			updatedAt: Date.now(),
 		}
-		setConversation(cleared)
+		syncConversation(cleared)
 		return cleared
-	}, [conversation, host, sessionId])
+	}, [host, sessionId, syncConversation])
 
 	const replaceConversation = useCallback(
 		async (next: ConversationRecord): Promise<ConversationRecord> => {
 			if (!sessionId) throw new Error('No active session')
 
-			for (const message of conversation?.messages ?? []) {
+			for (const message of conversationRef.current?.messages ?? []) {
 				await deleteMessage(host, message.id)
 			}
 
@@ -262,14 +275,14 @@ export function useServerMainConversation(defaultModelId: string) {
 				memoryArchiveCursor: 0,
 				updatedAt: Date.now(),
 			}
-			setConversation(replaced)
+			syncConversation(replaced)
 			await updateSession(host, sessionId, {
 				title: replaced.title,
 				model: replaced.modelId,
 			})
 			return replaced
 		},
-		[conversation, host, sessionId],
+		[host, sessionId, syncConversation],
 	)
 
 	const deleteMainSession = useCallback(async (): Promise<void> => {
@@ -277,20 +290,21 @@ export function useServerMainConversation(defaultModelId: string) {
 		await deleteSession(host, sessionId)
 		localStorage.removeItem(MAIN_SESSION_KEY)
 		setSessionId(null)
-		setConversation(null)
-	}, [host, sessionId])
+		syncConversation(null)
+	}, [host, sessionId, syncConversation])
 
 	const setActiveModel = useCallback(
 		async (modelId: string): Promise<void> => {
-			if (!sessionId || !conversation) return
+			const current = conversationRef.current
+			if (!sessionId || !current) return
 			await updateSession(host, sessionId, { model: modelId })
-			setConversation({
-				...conversation,
+			syncConversation({
+				...current,
 				modelId,
 				updatedAt: Date.now(),
 			})
 		},
-		[conversation, host, sessionId],
+		[host, sessionId, syncConversation],
 	)
 
 	return {

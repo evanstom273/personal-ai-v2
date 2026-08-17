@@ -6,7 +6,6 @@ import { ChatVoiceSession } from '@/components/chat/ChatVoiceSession'
 import { FoldableDualPaneLayout } from '@/components/foldable/FoldableDualPaneLayout'
 import { ScratchpadBusyIndicator, ScratchpadFab } from '@/components/scratchpad/ScratchpadFab'
 import { ScratchpadPanel } from '@/components/scratchpad/ScratchpadPanel'
-import { formatAppVersionLabel } from '@/data/changelog'
 import { useAppSwipeNavigation } from '@/hooks/useAppSwipeNavigation'
 import { useFoldablePane } from '@/hooks/useFoldablePane'
 import { useMobileNavLayout } from '@/hooks/useMobileNavLayout'
@@ -130,11 +129,7 @@ export function AppShell() {
 							<h1 className="truncate text-base font-semibold md:text-lg">
 								{pageTitle}
 							</h1>
-							{isChatRoute ? (
-								<p className="truncate text-xs text-muted-foreground">
-									{formatAppVersionLabel()}
-								</p>
-							) : isGenerating ? (
+							{!isChatRoute && isGenerating ? (
 								<p className="truncate text-xs text-muted-foreground">
 									{aiName} is replying in the background…
 								</p>

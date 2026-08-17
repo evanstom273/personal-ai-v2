@@ -1,4 +1,4 @@
-import { FileText, ImagePlus, Plus } from 'lucide-react'
+import { Brain, FileText, ImagePlus, Plus, Zap } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import {
 	DropdownMenu,
@@ -17,6 +17,8 @@ import { cn } from '@/utils/cn'
 interface ChatAttachMenuProps {
 	disabled?: boolean
 	selectedChatModelId: string
+	enableThinking: boolean
+	onEnableThinkingChange: (enabled: boolean) => void
 	onChatModelChange: (modelId: string) => void
 	onDocumentUpload: (files: File[]) => void
 	onImageUpload: (files: File[]) => void
@@ -25,6 +27,8 @@ interface ChatAttachMenuProps {
 export function ChatAttachMenu({
 	disabled,
 	selectedChatModelId,
+	enableThinking,
+	onEnableThinkingChange,
 	onChatModelChange,
 	onDocumentUpload,
 	onImageUpload,
@@ -102,6 +106,39 @@ export function ChatAttachMenu({
 					>
 						<ImagePlus className="h-4 w-4" />
 						Upload images
+					</DropdownMenuItem>
+
+					<DropdownMenuSeparator />
+					<DropdownMenuItem
+						onSelect={(event) => {
+							event.preventDefault()
+							onEnableThinkingChange(!enableThinking)
+						}}
+						className="flex-col items-start gap-0.5"
+					>
+						<div className="flex w-full items-center gap-3">
+							{enableThinking ? (
+								<Brain className="h-4 w-4 shrink-0 text-purple-500" />
+							) : (
+								<Zap className="h-4 w-4 shrink-0 text-amber-500" />
+							)}
+							<div className="min-w-0 flex-1">
+								<span className="font-medium">Thinking</span>
+							</div>
+							<span
+								className={cn(
+									'rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
+									enableThinking
+										? 'border-purple-500/30 bg-purple-500/10 text-purple-600 dark:text-purple-300'
+										: 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300',
+								)}
+							>
+								{enableThinking ? 'On' : 'Off'}
+							</span>
+						</div>
+						<span className="text-xs text-muted-foreground">
+							{enableThinking ? 'Reasoning enabled' : 'Fast responses, no reasoning'}
+						</span>
 					</DropdownMenuItem>
 
 					<DropdownMenuSeparator />

@@ -61,8 +61,7 @@ export function buildSystemInstruction(preferences: UserPreferences): string {
 			'- When a reminder fires, the app sends an assistant chat message and a system notification.',
 			'- Use the current date and time above when the user asks to schedule something. Confirm the datetime you chose.',
 			'- Format replies with markdown when helpful: use blockquotes for quoted document excerpts, fenced code blocks for code, and headings for longer structured answers.',
-			'- A comprehensive application reference document is injected on every message (architecture, storage, tools, constraints). Treat it as authoritative about how this app works.',
-			'- When the user asks how the app is built, how a feature works internally, or wants to inspect code, use read-only codebase tools (list_source_files, read_source_file, search_source_code) if enabled in settings. Never claim you modified source code.',
+			'- When the user @mentions a document in chat, its content is injected for that message. Use document tools to read, create, update, or rename documents in the shared library.',
 		].join('\n'),
 	)
 

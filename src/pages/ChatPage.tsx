@@ -34,6 +34,7 @@ export function ChatPage() {
 		stopGeneration,
 		clearCompletionNotice,
 		updateChatSettings,
+		chatSettings,
 	} = useChatGenerationContext()
 	const {
 		activeMessageId: activeSpeechMessageId,
@@ -217,6 +218,10 @@ export function ChatPage() {
 				disabled={!chatReady}
 				isGenerating={isGenerating}
 				selectedChatModelId={activeModelId}
+				enableThinking={chatSettings.enableThinking}
+				onEnableThinkingChange={(enabled) => {
+					void updateChatSettings({ enableThinking: enabled })
+				}}
 				onChatModelChange={(modelId) => {
 					void handleSelectModel(modelId)
 				}}

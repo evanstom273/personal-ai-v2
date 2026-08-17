@@ -2,7 +2,6 @@ import { ArrowLeftRight, X, FileText, Kanban, Layers } from 'lucide-react'
 import { useCallback } from 'react'
 import { ChatConversationActions } from '@/components/chat/ChatConversationActions'
 import { Button } from '@/components/ui/button'
-import { formatAppVersionLabel } from '@/data/changelog'
 import { useFoldablePane } from '@/hooks/useFoldablePane'
 import {
 	useChatGenerationContext,
@@ -66,9 +65,6 @@ export function DualPaneHeader() {
 					</span>
 					<div className="min-w-0">
 						<h2 className="truncate text-sm font-semibold">{pane1Info.title}</h2>
-						<p className="truncate text-[10px] text-muted-foreground">
-							{formatAppVersionLabel()}
-						</p>
 					</div>
 				</div>
 

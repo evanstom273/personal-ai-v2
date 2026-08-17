@@ -8,7 +8,6 @@ import { HomeUpcomingReminders } from '@/components/home/HomeUpcomingReminders'
 import { useDocuments } from '@/hooks/useDocuments'
 import { useProjects } from '@/hooks/useProjects'
 import { useReminders } from '@/hooks/useReminders'
-import { APP_VERSION } from '@/data/changelog'
 
 export function HomePage() {
 	const { preferences } = usePreferencesContext()
@@ -75,7 +74,7 @@ function formatHomeHeaderDate(now: Date): string {
 		hour12: false,
 	})
 
-	return `${weekday} ${day} ${month} - ${time} - v${APP_VERSION}`
+	return `${weekday} ${day} ${month} - ${time}`
 }
 
 function getTimeGreeting(now: Date = new Date()): string {

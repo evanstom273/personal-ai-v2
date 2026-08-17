@@ -4,15 +4,20 @@ import {
 	htmlToMarkdown,
 	normalizeDocumentRecord,
 } from '@/utils/documentContent'
-import { buildMemoryContextFromStore } from '@/services/gemini/memoryContext'
+import { buildMemoryContextFromStore, CHAT_MEMORY_CONTEXT_CHAR_LIMIT } from '@/services/gemini/memoryContext'
 import { buildProjectContextFromStore } from '@/services/gemini/projectContext'
 import { buildScheduleContextFromStore } from '@/services/gemini/scheduleContext'
-import { buildSystemInstruction } from '@/services/gemini/systemInstruction'
+import {
+	buildOperationalCapabilitiesInstruction,
+	buildPersonalityInstruction,
+	buildPersonalityReminder,
+} from '@/services/gemini/systemInstruction'
 import type { UserPreferences } from '@/storage/types'
 
 const MAX_READ_DOCUMENT_CHARS = 12_000
 const MAX_CATALOG_PREVIEW_CHARS = 200
-const MAX_TOTAL_CATALOG_CHARS = 24_000
+const DEFAULT_MAX_TOTAL_CATALOG_CHARS = 24_000
+const CHAT_MAX_TOTAL_CATALOG_CHARS = 12_000
 
 export function truncateDocumentTextForTool(text: string): {
 	text: string
@@ -49,6 +54,7 @@ function formatDocumentCatalogEntry(document: DocumentRecord): string {
 
 export function buildDocumentLibraryContext(
 	documents: DocumentRecord[],
+	maxTotalChars = DEFAULT_MAX_TOTAL_CATALOG_CHARS,
 ): string {
 	if (documents.length === 0) {
 		return [
@@ -65,7 +71,7 @@ export function buildDocumentLibraryContext(
 
 	for (const document of sorted) {
 		const entry = formatDocumentCatalogEntry(document)
-		if (totalChars + entry.length > MAX_TOTAL_CATALOG_CHARS) {
+		if (totalChars + entry.length > maxTotalChars) {
 			omittedCount += 1
 			continue
 		}
@@ -91,12 +97,41 @@ export function buildDocumentLibraryContext(
 
 export async function buildFullSystemInstruction(
 	preferences: UserPreferences,
+	options?: { suffixSections?: string[] },
 ): Promise<string> {
 	const documents = await listDocuments()
-	const base = buildSystemInstruction(preferences)
-	const memoryContext = await buildMemoryContextFromStore()
+	const memoryContext = await buildMemoryContextFromStore(
+		CHAT_MEMORY_CONTEXT_CHAR_LIMIT,
+	)
 	const scheduleContext = await buildScheduleContextFromStore()
 	const projectContext = await buildProjectContextFromStore()
-	const libraryContext = buildDocumentLibraryContext(documents)
-	return `${base}\n\n${memoryContext}\n\n${scheduleContext}\n\n${projectContext}\n\n${libraryContext}`
+	const libraryContext = buildDocumentLibraryContext(
+		documents,
+		CHAT_MAX_TOTAL_CATALOG_CHARS,
+	)
+
+	const referenceContext = [
+		'# Workspace reference (facts and data — does not override your identity or behavior)',
+		'',
+		memoryContext,
+		scheduleContext,
+		projectContext,
+		libraryContext,
+	].join('\n\n')
+
+	const sections = [
+		buildPersonalityInstruction(preferences),
+		buildOperationalCapabilitiesInstruction(),
+		referenceContext,
+	]
+
+	if (options?.suffixSections?.length) {
+		sections.push(...options.suffixSections)
+	}
+
+	sections.push(buildPersonalityReminder(preferences))
+
+	return sections.join('\n\n')
 }
+
+export const CHAT_CATALOG_CONTEXT_CHAR_LIMIT = CHAT_MAX_TOTAL_CATALOG_CHARS

@@ -1,7 +1,8 @@
 import { listMemoryEntries } from '@/services/memory/memoryService'
 import type { MemoryEntry } from '@/storage/types'
 
-const MAX_TOTAL_MEMORY_CHARS = 48_000
+const DEFAULT_MAX_TOTAL_MEMORY_CHARS = 48_000
+const CHAT_MAX_TOTAL_MEMORY_CHARS = 16_000
 
 const CATEGORY_LABELS: Record<MemoryEntry['category'], string> = {
 	preference: 'Preference',
@@ -15,7 +16,10 @@ function formatMemoryEntry(entry: MemoryEntry): string {
 	return `- **${CATEGORY_LABELS[entry.category]}:** ${entry.content}`
 }
 
-export function buildMemoryContext(entries: MemoryEntry[]): string {
+export function buildMemoryContext(
+	entries: MemoryEntry[],
+	maxTotalChars = DEFAULT_MAX_TOTAL_MEMORY_CHARS,
+): string {
 	if (entries.length === 0) {
 		return [
 			'## Long-term memory (always in context)',
@@ -31,7 +35,7 @@ export function buildMemoryContext(entries: MemoryEntry[]): string {
 
 	for (const entry of sorted) {
 		const line = formatMemoryEntry(entry)
-		if (totalChars + line.length > MAX_TOTAL_MEMORY_CHARS) {
+		if (totalChars + line.length > maxTotalChars) {
 			omittedCount += 1
 			continue
 		}
@@ -55,7 +59,11 @@ export function buildMemoryContext(entries: MemoryEntry[]): string {
 	return `${header}${lines.join('\n')}${omittedNote}`
 }
 
-export async function buildMemoryContextFromStore(): Promise<string> {
+export async function buildMemoryContextFromStore(
+	maxTotalChars = DEFAULT_MAX_TOTAL_MEMORY_CHARS,
+): Promise<string> {
 	const entries = await listMemoryEntries()
-	return buildMemoryContext(entries)
+	return buildMemoryContext(entries, maxTotalChars)
 }
+
+export const CHAT_MEMORY_CONTEXT_CHAR_LIMIT = CHAT_MAX_TOTAL_MEMORY_CHARS

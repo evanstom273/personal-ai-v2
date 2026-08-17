@@ -1,6 +1,9 @@
 import {
 	ArrowDown,
 	Bot,
+	Brain,
+	ChevronDown,
+	ChevronRight,
 	ExternalLink,
 	FileText,
 	Loader2,
@@ -20,6 +23,8 @@ import type { TtsPlaybackStatus } from '@/hooks/useTextToSpeech'
 import { formatMessageTime } from '@/utils/dateTime'
 import { readChatScrollTop, saveChatScrollTop } from '@/utils/chatScrollState'
 import { cn } from '@/utils/cn'
+import type { ChatGenerationActivity } from '@/utils/chatActivityLabels'
+import { formatGenerationStatusLabel } from '@/utils/chatActivityLabels'
 
 const BOTTOM_THRESHOLD_PX = 80
 
@@ -28,8 +33,10 @@ interface ChatMessagesProps {
 	streamingAssistant?: {
 		id: string
 		content: string
+		thinkingContent?: string
 	} | null
 	isGenerating: boolean
+	generationActivity?: ChatGenerationActivity | null
 	aiName: string
 	editingMessageId?: string | null
 	onEditUserMessage?: (message: StoredMessage) => void
@@ -51,6 +58,7 @@ export function ChatMessages({
 	messages,
 	streamingAssistant,
 	isGenerating,
+	generationActivity = null,
 	aiName,
 	editingMessageId = null,
 	onEditUserMessage,
@@ -61,12 +69,12 @@ export function ChatMessages({
 	onSpeakMessage,
 	onStopSpeech,
 	speechDisabled = false,
-	streamingSlot,
 }: ChatMessagesProps) {
 	const viewportRef = useRef<HTMLDivElement>(null)
 	const previousMessageCountRef = useRef(messages.length)
 	const hasRestoredScrollRef = useRef(false)
 	const [showScrollToBottom, setShowScrollToBottom] = useState(false)
+	const generationStatusLabel = formatGenerationStatusLabel(generationActivity, aiName)
 
 	const isNearBottom = useCallback((viewport: HTMLElement): boolean => {
 		return (
@@ -174,7 +182,12 @@ export function ChatMessages({
 
 	useEffect(() => {
 		updateScrollButtonVisibility()
-	}, [isGenerating, streamingAssistant?.content, updateScrollButtonVisibility])
+	}, [
+		isGenerating,
+		streamingAssistant?.content,
+		streamingAssistant?.thinkingContent,
+		updateScrollButtonVisibility,
+	])
 
 	if (messages.length === 0 && !isGenerating) {
 		return (
@@ -227,13 +240,14 @@ export function ChatMessages({
 							onConfirmDelete={onConfirmDelete}
 							onCancelDelete={onCancelDelete}
 							isStreaming
-							streamingSlot={streamingSlot}
+							thinkingContent={streamingAssistant.thinkingContent}
+							activityLabel={generationStatusLabel}
 						/>
 					) : null}
 					{isGenerating && !streamingAssistant ? (
 						<div className="flex items-center gap-3 border-t border-border/40 py-6 text-sm text-muted-foreground">
 							<Loader2 className="h-4 w-4 animate-spin" />
-							{aiName} is thinking…
+							{generationStatusLabel}
 						</div>
 					) : null}
 				</div>
@@ -271,6 +285,8 @@ function MessageRow({
 	onStopSpeech,
 	speechDisabled = false,
 	isStreaming = false,
+	thinkingContent,
+	activityLabel,
 	streamingSlot,
 }: {
 	message: StoredMessage
@@ -286,14 +302,19 @@ function MessageRow({
 	onStopSpeech?: () => void
 	speechDisabled?: boolean
 	isStreaming?: boolean
+	thinkingContent?: string
+	activityLabel?: string
 	streamingSlot?: ReactNode
 }) {
 	const contentRef = useRef<HTMLDivElement>(null)
+	const [showThinking, setShowThinking] = useState(true)
 	const isUser = message.role === 'user'
 	const hasMedia = (message.media?.length ?? 0) > 0
 	const showMediaFirst = !isUser && hasMedia
 	const messageSpeechStatus =
 		activeSpeechMessageId === message.id ? speechStatus : 'idle'
+	const showThinkingBlock = Boolean(thinkingContent?.trim())
+	const statusLabel = activityLabel ?? `${aiName} is working…`
 
 	return (
 		<article
@@ -348,6 +369,48 @@ function MessageRow({
 								))
 							: null}
 
+						{!isUser && isStreaming && !message.content && !showThinkingBlock ? (
+							<div
+								className="mb-3 flex animate-pulse items-center gap-2.5 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-primary"
+							>
+								<Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+								<span>{statusLabel}</span>
+							</div>
+						) : null}
+
+						{showThinkingBlock ? (
+							<div className="surface-panel mb-3 w-full overflow-hidden rounded-xl text-xs">
+								<button
+									type="button"
+									onClick={() => setShowThinking((current) => !current)}
+									className="flex w-full items-center justify-between px-3.5 py-2 text-muted-foreground transition-colors hover:text-foreground"
+								>
+									<div className="flex items-center gap-2 font-medium">
+										<Brain className="h-3.5 w-3.5 text-purple-500" />
+										<span>Thought process</span>
+										{isStreaming && !message.content.trim() ? (
+											<span className="flex items-center gap-1 font-mono text-[10px] text-purple-500/80">
+												<span className="h-2 w-2 animate-ping rounded-full bg-purple-400" />
+												Reasoning
+											</span>
+										) : null}
+									</div>
+									{showThinking ? (
+										<ChevronDown className="h-3.5 w-3.5" />
+									) : (
+										<ChevronRight className="h-3.5 w-3.5" />
+									)}
+								</button>
+								{showThinking ? (
+									<div
+										className="max-h-60 overflow-y-auto border-t border-border/60 bg-background/40 p-3.5 font-mono text-[11px] leading-relaxed whitespace-pre-wrap text-muted-foreground"
+									>
+										{thinkingContent}
+									</div>
+								) : null}
+							</div>
+						) : null}
+
 						<div
 							ref={contentRef}
 							tabIndex={-1}
@@ -374,7 +437,7 @@ function MessageRow({
 							) : isStreaming ? (
 								<span className="inline-flex items-center gap-2 text-muted-foreground">
 									<Loader2 className="h-4 w-4 animate-spin" />
-									Thinking…
+									{statusLabel}
 								</span>
 							) : null}
 						</div>

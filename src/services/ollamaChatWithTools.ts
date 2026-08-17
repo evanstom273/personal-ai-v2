@@ -26,6 +26,7 @@ interface OllamaToolCall {
 interface OllamaChatMessage {
 	role: string
 	content?: string
+	thinking?: string
 	images?: string[]
 	tool_calls?: OllamaToolCall[]
 	tool_name?: string
@@ -98,9 +99,12 @@ async function streamOllamaRound(
 	tools: ReturnType<typeof buildOllamaTools>,
 	options: {
 		signal?: AbortSignal
-		onTextDelta?: (delta: string) => void
+		onTextDelta?: (delta: string, fullMainText: string) => void
+		onThinkingDelta?: (delta: string, fullThinkingText: string) => void
+		onActivityChange?: (phase: 'starting' | 'thinking' | 'writing') => void
 	},
 ): Promise<OllamaChatMessage> {
+	options.onActivityChange?.('starting')
 	const response = await fetch(endpoint, {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
@@ -134,7 +138,9 @@ async function streamOllamaRound(
 	const reader = response.body.getReader()
 	const decoder = new TextDecoder('utf-8')
 	let rawAccumulatedContent = ''
+	let rawAccumulatedThinking = ''
 	let previousMainLength = 0
+	let previousThinkingLength = 0
 	let assistantMessage: OllamaChatMessage = { role: 'assistant', content: '' }
 
 	while (true) {
@@ -152,14 +158,42 @@ async function streamOllamaRound(
 				done?: boolean
 			}
 
+			if (json.message?.thinking) {
+				rawAccumulatedThinking += json.message.thinking
+				const parsed = parseThoughtAndContent(rawAccumulatedContent)
+				const combinedThinking = [
+					rawAccumulatedThinking.trim(),
+					parsed.thinking.trim(),
+				]
+					.filter(Boolean)
+					.join('\n\n')
+
+				if (combinedThinking.length > previousThinkingLength) {
+					options.onThinkingDelta?.(
+						combinedThinking.slice(previousThinkingLength),
+						combinedThinking,
+					)
+					previousThinkingLength = combinedThinking.length
+				}
+
+				options.onActivityChange?.('thinking')
+			}
+
 			if (json.message?.content) {
 				rawAccumulatedContent += json.message.content
 				const parsed = parseThoughtAndContent(rawAccumulatedContent)
 				const mainText = parsed.main
 
 				if (mainText.length > previousMainLength) {
-					options.onTextDelta?.(mainText.slice(previousMainLength))
+					options.onTextDelta?.(
+						mainText.slice(previousMainLength),
+						mainText,
+					)
 					previousMainLength = mainText.length
+				}
+
+				if (mainText.trim()) {
+					options.onActivityChange?.('writing')
 				}
 			}
 
@@ -171,6 +205,7 @@ async function streamOllamaRound(
 				assistantMessage = {
 					role: json.message?.role ?? 'assistant',
 					content: rawAccumulatedContent,
+					thinking: rawAccumulatedThinking || json.message?.thinking,
 					tool_calls: json.message?.tool_calls ?? assistantMessage.tool_calls,
 				}
 			}
@@ -187,8 +222,10 @@ export async function generateOllamaChatWithTools(
 	preferences: UserPreferences,
 	options: {
 		signal?: AbortSignal
-		onTextDelta?: (delta: string) => void
-		onToolActivity?: () => void
+		onTextDelta?: (delta: string, fullMainText: string) => void
+		onThinkingDelta?: (delta: string, fullThinkingText: string) => void
+		onActivityChange?: (phase: 'starting' | 'thinking' | 'writing') => void
+		onToolActivity?: (toolNames: string[]) => void
 		userMessageText?: string
 	},
 ): Promise<OllamaChatWithToolsResult> {
@@ -238,11 +275,16 @@ export async function generateOllamaChatWithTools(
 			{
 				signal: options.signal,
 				onTextDelta: options.onTextDelta,
+				onThinkingDelta: options.onThinkingDelta,
+				onActivityChange: options.onActivityChange,
 			},
 		)
 
 		if (assistantMessage.tool_calls?.length) {
-			options.onToolActivity?.()
+			const toolNames = assistantMessage.tool_calls
+				.map((call) => call.function?.name ?? '')
+				.filter(Boolean)
+			options.onToolActivity?.(toolNames)
 			formattedMessages.push(assistantMessage)
 
 			for (const call of assistantMessage.tool_calls) {

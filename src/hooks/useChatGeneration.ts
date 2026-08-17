@@ -16,6 +16,7 @@ import {
 	notifyGenerationComplete,
 	requestNotificationPermission,
 } from '@/utils/notifications'
+import type { ChatGenerationActivity } from '@/utils/chatActivityLabels'
 
 interface UseOllamaChatGenerationOptions {
 	preferences: UserPreferences
@@ -67,11 +68,15 @@ export function useChatGeneration({
 	const [streamingAssistant, setStreamingAssistant] = useState<{
 		id: string
 		content: string
+		thinkingContent?: string
 	} | null>(null)
+	const [generationActivity, setGenerationActivity] =
+		useState<ChatGenerationActivity | null>(null)
 	const [completionNotice, setCompletionNotice] = useState<string | null>(null)
 	const [settings, setSettings] = useState<ChatSettings>(DEFAULT_SETTINGS)
 
 	const streamingContentRef = useRef('')
+	const streamingThinkingRef = useRef('')
 	const abortControllerRef = useRef<AbortController | null>(null)
 	const isChatRouteRef = useRef(isChatRoute)
 
@@ -103,6 +108,7 @@ export function useChatGeneration({
 	const stopGeneration = useCallback(() => {
 		abortControllerRef.current?.abort()
 		setIsGenerating(false)
+		setGenerationActivity(null)
 	}, [])
 
 	const submitMessage = useCallback(
@@ -127,8 +133,10 @@ export function useChatGeneration({
 			setCompletionNotice(null)
 			setIsGenerating(true)
 			setStreamingAssistant(null)
+			setGenerationActivity({ phase: 'starting' })
 			setLastIntent('Chat')
 			streamingContentRef.current = ''
+			streamingThinkingRef.current = ''
 
 			const abortController = new AbortController()
 			abortControllerRef.current = abortController
@@ -171,7 +179,12 @@ export function useChatGeneration({
 				].map(toChatMessage)
 
 				streamingContentRef.current = ''
-				setStreamingAssistant({ id: assistantMessageId, content: '' })
+				streamingThinkingRef.current = ''
+				setStreamingAssistant({
+					id: assistantMessageId,
+					content: '',
+					thinkingContent: '',
+				})
 
 				const chatResult = await generateOllamaChatWithTools(
 					modelId,
@@ -181,18 +194,36 @@ export function useChatGeneration({
 					{
 						signal: abortController.signal,
 						userMessageText: text,
-						onTextDelta: (delta) => {
-							streamingContentRef.current += delta
+						onActivityChange: (phase) => {
+							setGenerationActivity({ phase })
+						},
+						onThinkingDelta: (_, fullThinkingText) => {
+							streamingThinkingRef.current = fullThinkingText
 							setStreamingAssistant({
 								id: assistantMessageId,
 								content: streamingContentRef.current,
+								thinkingContent: fullThinkingText,
 							})
 						},
-						onToolActivity: () => {
+						onTextDelta: (_, fullMainText) => {
+							streamingContentRef.current = fullMainText
+							setStreamingAssistant({
+								id: assistantMessageId,
+								content: fullMainText,
+								thinkingContent: streamingThinkingRef.current,
+							})
+						},
+						onToolActivity: (toolNames) => {
 							streamingContentRef.current = ''
+							streamingThinkingRef.current = ''
+							setGenerationActivity({
+								phase: 'tool',
+								toolName: toolNames[0],
+							})
 							setStreamingAssistant({
 								id: assistantMessageId,
 								content: '',
+								thinkingContent: '',
 							})
 						},
 					},
@@ -211,7 +242,9 @@ export function useChatGeneration({
 				}
 				await appendMessages([assistantMessage], modelId)
 				setStreamingAssistant(null)
+				setGenerationActivity(null)
 				streamingContentRef.current = ''
+				streamingThinkingRef.current = ''
 
 				if (chatResult.text.trim() && onAssistantReply) {
 					onAssistantReply({
@@ -247,7 +280,9 @@ export function useChatGeneration({
 						])
 					}
 					setStreamingAssistant(null)
+					setGenerationActivity(null)
 					streamingContentRef.current = ''
+					streamingThinkingRef.current = ''
 					return
 				}
 
@@ -257,7 +292,9 @@ export function useChatGeneration({
 						: 'Generation failed',
 				)
 				setStreamingAssistant(null)
+				setGenerationActivity(null)
 				streamingContentRef.current = ''
+				streamingThinkingRef.current = ''
 
 				if (!isChatRouteRef.current) {
 					setCompletionNotice('Generation failed. Open chat to see details.')
@@ -291,6 +328,7 @@ export function useChatGeneration({
 		error,
 		lastIntent,
 		streamingAssistant,
+		generationActivity,
 		completionNotice,
 		submitMessage,
 		stopGeneration,

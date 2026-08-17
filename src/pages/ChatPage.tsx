@@ -30,6 +30,7 @@ export function ChatPage() {
 		isGenerating,
 		error,
 		streamingAssistant,
+		generationActivity,
 		submitMessage,
 		stopGeneration,
 		clearCompletionNotice,
@@ -202,6 +203,7 @@ export function ChatPage() {
 				messages={conversation?.messages ?? []}
 				streamingAssistant={streamingAssistant}
 				isGenerating={isGenerating}
+				generationActivity={generationActivity}
 				aiName={aiName}
 				editingMessageId={editingMessage?.id ?? null}
 				onEditUserMessage={handleEditUserMessage}

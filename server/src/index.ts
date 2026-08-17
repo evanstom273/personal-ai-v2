@@ -19,13 +19,15 @@ app.use(
 )
 
 app.get('/health', async (c) => {
-	const ollamaOk = await checkOllamaHealth(config.ollamaBaseUrl)
+	const ollama = await checkOllamaHealth(config.ollamaBaseUrl)
 	return c.json({
 		ok: true,
 		service: 'personalai',
 		version: '0.1.0',
 		dataDir: config.dataDir,
-		ollama: ollamaOk,
+		ollama: ollama.ok,
+		ollamaError: ollama.error,
+		ollamaUrl: config.ollamaBaseUrl,
 	})
 })
 

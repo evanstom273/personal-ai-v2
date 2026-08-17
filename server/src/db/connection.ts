@@ -1,13 +1,15 @@
-import Database from 'better-sqlite3'
+import { DatabaseSync } from 'node:sqlite'
 import type { ServerConfig } from '../config.js'
 import { runMigrations } from './migrate.js'
+import type { PersonalAiDatabase } from './types.js'
 
-let dbInstance: Database.Database | null = null
+let dbInstance: PersonalAiDatabase | null = null
 
-export function getDb(config: ServerConfig): Database.Database {
+export function getDb(config: ServerConfig): PersonalAiDatabase {
 	if (!dbInstance) {
-		dbInstance = new Database(config.dbPath)
-		dbInstance.pragma('journal_mode = WAL')
+		dbInstance = new DatabaseSync(config.dbPath)
+		dbInstance.exec('PRAGMA foreign_keys = ON')
+		dbInstance.exec('PRAGMA journal_mode = WAL')
 		runMigrations(dbInstance)
 	}
 	return dbInstance

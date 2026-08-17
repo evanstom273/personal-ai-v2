@@ -1,4 +1,4 @@
-import type Database from 'better-sqlite3'
+import type { PersonalAiDatabase } from '../db/types.js'
 import type {
 	AttachmentRow,
 	CreateAttachmentInput,
@@ -7,7 +7,7 @@ import type {
 	UpdateMessageInput,
 } from '../types.js'
 
-export function listMessagesForConversation(db: Database.Database, conversationId: string): MessageRow[] {
+export function listMessagesForConversation(db: PersonalAiDatabase, conversationId: string): MessageRow[] {
 	return db
 		.prepare(
 			`SELECT id, conversation_id, role, content, thinking_content, model, tokens_per_sec,
@@ -19,7 +19,7 @@ export function listMessagesForConversation(db: Database.Database, conversationI
 		.all(conversationId) as MessageRow[]
 }
 
-export function getMessage(db: Database.Database, id: string): MessageRow | undefined {
+export function getMessage(db: PersonalAiDatabase, id: string): MessageRow | undefined {
 	return db
 		.prepare(
 			`SELECT id, conversation_id, role, content, thinking_content, model, tokens_per_sec,
@@ -29,7 +29,7 @@ export function getMessage(db: Database.Database, id: string): MessageRow | unde
 		.get(id) as MessageRow | undefined
 }
 
-export function createMessage(db: Database.Database, input: CreateMessageInput): MessageRow {
+export function createMessage(db: PersonalAiDatabase, input: CreateMessageInput): MessageRow {
 	db.prepare(
 		`INSERT INTO messages (
 			id, conversation_id, role, content, thinking_content, model,
@@ -53,7 +53,7 @@ export function createMessage(db: Database.Database, input: CreateMessageInput):
 }
 
 export function updateMessage(
-	db: Database.Database,
+	db: PersonalAiDatabase,
 	id: string,
 	input: UpdateMessageInput
 ): MessageRow | undefined {
@@ -88,17 +88,17 @@ export function updateMessage(
 	return getMessage(db, id)
 }
 
-export function deleteMessage(db: Database.Database, id: string): boolean {
+export function deleteMessage(db: PersonalAiDatabase, id: string): boolean {
 	const result = db.prepare('DELETE FROM messages WHERE id = ?').run(id)
 	return result.changes > 0
 }
 
-export function deleteMessagesForConversation(db: Database.Database, conversationId: string): number {
+export function deleteMessagesForConversation(db: PersonalAiDatabase, conversationId: string): number {
 	const result = db.prepare('DELETE FROM messages WHERE conversation_id = ?').run(conversationId)
 	return result.changes
 }
 
-export function listAttachmentsForMessage(db: Database.Database, messageId: string): AttachmentRow[] {
+export function listAttachmentsForMessage(db: PersonalAiDatabase, messageId: string): AttachmentRow[] {
 	return db
 		.prepare(
 			`SELECT id, message_id, filename, mime_type, storage_path, size_bytes, kind, content_text, created_at
@@ -107,7 +107,7 @@ export function listAttachmentsForMessage(db: Database.Database, messageId: stri
 		.all(messageId) as AttachmentRow[]
 }
 
-export function createAttachment(db: Database.Database, input: CreateAttachmentInput): AttachmentRow {
+export function createAttachment(db: PersonalAiDatabase, input: CreateAttachmentInput): AttachmentRow {
 	db.prepare(
 		`INSERT INTO message_attachments (
 			id, message_id, filename, mime_type, storage_path, size_bytes, kind, content_text, created_at

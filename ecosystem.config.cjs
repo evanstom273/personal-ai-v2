@@ -3,9 +3,8 @@ module.exports = {
 		{
 			name: 'personalai',
 			cwd: './server',
-			script: 'npm.cmd',
-			args: 'run start',
-			interpreter: 'none',
+			script: 'start.cjs',
+			interpreter: 'node',
 			watch: false,
 			autorestart: true,
 			max_restarts: 10,

@@ -413,7 +413,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 								<option value={16384}>16,384 (Large)</option>
 								<option value={32768}>32,768 (Extended)</option>
 								<option value={65536}>65,536 (Ultra)</option>
+								<option value={131072}>131,072 (128k)</option>
+								<option value={262144}>262,144 (256k — qwen3.5)</option>
 							</select>
+							<p className="text-[10px] text-slate-500">
+								Sent to Ollama as <code className="font-mono text-slate-400">num_ctx</code> on each request.
+								Match your Ollama / model limit (e.g. 256k).
+							</p>
 						</div>
 
 						<div className="space-y-2 p-3.5 rounded-xl bg-slate-900/40 border border-slate-800/80">

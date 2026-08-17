@@ -11,11 +11,14 @@ import {
 } from 'react'
 import { createPortal } from 'react-dom'
 import { ChatAttachMenu } from '@/components/chat/ChatAttachMenu'
-import { DocumentMentionMenu } from '@/components/chat/DocumentMentionMenu'
+import { AutocompleteMenu } from '@/components/autocomplete/AutocompleteMenu'
 import { Button } from '@/components/ui/button'
-import { useDocumentMentionPicker } from '@/hooks/useDocumentMentionPicker'
+import { CHAT_MENTION_PROVIDERS } from '@/autocomplete/providers'
+import { insertTriggerSelection } from '@/autocomplete/triggers'
+import { useAutocomplete } from '@/hooks/useAutocomplete'
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition'
-import { insertDocumentMention, buildDocumentMention } from '@/utils/documentMentions'
+import type { AutocompleteItem } from '@/autocomplete/types'
+import { buildDocumentMention } from '@/utils/documentMentions'
 import { uploadDocumentsFromFiles } from '@/services/documents/documentUploadService'
 import type { ChatAttachment, ChatInputMethod, ChatSubmitPayload } from '@/types/chat'
 import type { StoredMessage } from '@/storage/types'
@@ -96,13 +99,16 @@ export function ChatInput({
 	const isReviewing = status === 'review'
 	const inputDisabled = disabled || isGenerating || isListening || isTranscribing
 
-	const {
-		isOpen: isMentionMenuOpen,
-		activeMention,
-		filteredDocuments,
-		selectedIndex,
-		moveSelection,
-	} = useDocumentMentionPicker(prompt, cursorPosition, !inputDisabled)
+	const autocomplete = useAutocomplete({
+		text: prompt,
+		cursorPosition,
+		enabled: !inputDisabled,
+		triggers: ['@'],
+		providers: CHAT_MENTION_PROVIDERS,
+		limit: 10,
+	})
+
+	const isMentionMenuOpen = autocomplete.isOpen
 
 	const updateMentionMenuPosition = useCallback(() => {
 		const anchor = mentionAnchorRef.current
@@ -203,30 +209,33 @@ export function ChatInput({
 		setCursorPosition(nextPosition)
 	}, [prompt.length])
 
-	const insertMention = useCallback(
-		(title: string) => {
-			if (!activeMention) {
-				return
+	const insertEntityMention = useCallback(
+		(item: AutocompleteItem) => {
+			if (!autocomplete.activeMatch) return
+
+			let replacement = `@${item.title} `
+			if (item.entityType === 'project') {
+				replacement = `@project:${item.title} `
+			} else if (item.entityType === 'memory') {
+				replacement = `@memory:${item.title.slice(0, 60)} `
 			}
 
-			const { nextText, nextCursor } = insertDocumentMention(
+			const { text, cursorPosition: nextCursor } = insertTriggerSelection(
 				prompt,
-				activeMention,
-				title,
+				autocomplete.activeMatch,
+				replacement,
 			)
-			setPrompt(nextText)
+			setPrompt(text)
 			setCursorPosition(nextCursor)
 
 			requestAnimationFrame(() => {
 				const textarea = textareaRef.current
-				if (!textarea) {
-					return
-				}
+				if (!textarea) return
 				textarea.focus()
 				textarea.setSelectionRange(nextCursor, nextCursor)
 			})
 		},
-		[activeMention, prompt],
+		[autocomplete.activeMatch, prompt],
 	)
 
 	function handleSubmit(event?: FormEvent): void {
@@ -347,21 +356,30 @@ export function ChatInput({
 		if (isMentionMenuOpen) {
 			if (event.key === 'ArrowDown') {
 				event.preventDefault()
-				moveSelection(1)
+				autocomplete.moveSelection(1)
 				return
 			}
 
 			if (event.key === 'ArrowUp') {
 				event.preventDefault()
-				moveSelection(-1)
+				autocomplete.moveSelection(-1)
 				return
 			}
 
 			if (event.key === 'Enter' && !event.shiftKey) {
 				event.preventDefault()
-				const selected = filteredDocuments[selectedIndex]
+				const selected = autocomplete.items[autocomplete.selectedIndex]
 				if (selected) {
-					insertMention(selected.title)
+					insertEntityMention(selected)
+				}
+				return
+			}
+
+			if (event.key === 'Tab') {
+				event.preventDefault()
+				const selected = autocomplete.items[autocomplete.selectedIndex]
+				if (selected) {
+					insertEntityMention(selected)
 				}
 				return
 			}
@@ -500,10 +518,11 @@ export function ChatInput({
 			<div ref={mentionAnchorRef} className="relative mx-auto w-full min-w-0 max-w-3xl">
 				{isMentionMenuOpen && mentionMenuStyle
 					? createPortal(
-							<DocumentMentionMenu
-								documents={filteredDocuments}
-								selectedIndex={selectedIndex}
-								onSelect={(document) => insertMention(document.title)}
+							<AutocompleteMenu
+								heading="Reference something"
+								items={autocomplete.items}
+								selectedIndex={autocomplete.selectedIndex}
+								onSelect={insertEntityMention}
 								style={mentionMenuStyle}
 							/>,
 							document.body,

@@ -27,14 +27,13 @@ import {
   cachePersonalaiHost,
   loadCachedPersonalaiHost,
 } from './services/personalaiApi'
+import { Header } from './components/Header'
+import { Sidebar } from './components/Sidebar'
+import { WelcomeScreen } from './components/WelcomeScreen'
 import { ChatMessageItem } from './components/ChatMessageItem'
 import { ChatInput } from './components/ChatInput'
 import { SettingsModal } from './components/SettingsModal'
 import { ServerOfflineBanner } from './components/ServerOfflineBanner'
-import { JarvisHeader } from './components/JarvisHeader'
-import { BottomNav, type AppTab } from './components/BottomNav'
-import { HomeView } from './components/HomeView'
-import { LibraryView } from './components/LibraryView'
 
 const LEGACY_STORAGE_KEYS = {
   SESSIONS: 'personal_ai_chat_sessions',
@@ -53,7 +52,7 @@ function App() {
   const [activeSessionId, setActiveSessionId] = useState<string>('')
   const [settings, setSettings] = useState<ChatSettings>(DEFAULT_SETTINGS)
 
-  const [activeTab, setActiveTab] = useState<AppTab>('chat')
+  const [sidebarOpen, setSidebarOpen] = useState<boolean>(true)
   const [settingsOpen, setSettingsOpen] = useState<boolean>(false)
   const [isStreaming, setIsStreaming] = useState<boolean>(false)
   const [serverOnline, setServerOnline] = useState<boolean>(false)
@@ -330,6 +329,15 @@ function App() {
       const remaining = sessions.filter((s) => s.id !== id)
       setActiveSessionId(remaining.length > 0 ? remaining[0].id : '')
     }
+  }
+
+  const handleRenameSession = async (id: string, newTitle: string) => {
+    setSessions((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, title: newTitle, updatedAt: Date.now() } : s))
+    )
+    if (!serverOnline) return
+    const host = getPersonalaiHost(settings)
+    await updateSession(host, id, { title: newTitle })
   }
 
   const handleClearCurrentChat = async () => {
@@ -677,103 +685,88 @@ function App() {
     )
   }
 
-  const handleTabChange = (tab: AppTab) => {
-    if (tab === 'settings') {
-      setSettingsOpen(true)
-      return
-    }
-    setActiveTab(tab)
-  }
-
   return (
-    <div className="app-shell flex flex-col overflow-hidden">
-      {activeTab === 'chat' && (
-        <JarvisHeader
-          hasMessages={messages.length > 0}
-          onClearChat={() => {
+    <div
+      className={`app-shell flex overflow-hidden selection:bg-primary/30 selection:text-primary-foreground ${
+        settings.theme === 'light' ? 'theme-light' : ''
+      }`}
+    >
+      <Sidebar
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        sessions={sessions}
+        activeSessionId={activeSessionId}
+        onSelectSession={(id) => setActiveSessionId(id)}
+        onNewChat={() => {
+          if (serverOnline) createNewSession().catch(console.error)
+        }}
+        onDeleteSession={(id) => {
+          handleDeleteSession(id).catch(console.error)
+        }}
+        onRenameSession={(id, title) => {
+          handleRenameSession(id, title).catch(console.error)
+        }}
+        models={models}
+        selectedModel={selectedModel}
+        onOpenSettings={() => setSettingsOpen(true)}
+      />
+
+      <div className="flex-1 flex flex-col min-w-0 min-h-0 h-full overflow-hidden">
+        {!serverOnline && !serverChecking && (
+          <ServerOfflineBanner
+            onRetry={() => connectToServer()}
+            isRetrying={serverChecking}
+          />
+        )}
+
+        <Header
+          sidebarOpen={sidebarOpen}
+          setSidebarOpen={setSidebarOpen}
+          onNewChat={() => {
+            if (serverOnline) createNewSession().catch(console.error)
+          }}
+          onOpenSettings={() => setSettingsOpen(true)}
+          onClearCurrentChat={() => {
             handleClearCurrentChat().catch(console.error)
           }}
+          settings={settings}
+          onUpdateSettings={updateSettings}
+          hasMessages={messages.length > 0}
         />
-      )}
 
-      {!serverOnline && !serverChecking && activeTab === 'chat' && (
-        <ServerOfflineBanner
-          onRetry={() => connectToServer()}
-          isRetrying={serverChecking}
-        />
-      )}
+        <div className="flex-1 min-h-0 overflow-y-auto flex flex-col">
+          {serverChecking ? (
+            <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
+              Connecting to PersonalAI server...
+            </div>
+          ) : messages.length === 0 ? (
+            <WelcomeScreen
+              models={models}
+              selectedModel={selectedModel}
+              onSelectPrompt={(promptText) => {
+                if (serverOnline) handleSendMessage(promptText)
+              }}
+            />
+          ) : (
+            <div className="mx-auto box-border w-full min-w-0 max-w-3xl px-4 py-2 md:px-6">
+              {messages.map((msg, idx) => (
+                <ChatMessageItem
+                  key={msg.id}
+                  message={msg}
+                  isLast={idx === messages.length - 1}
+                  isStreaming={isStreaming}
+                  onRegenerate={idx === messages.length - 1 ? handleRegenerate : undefined}
+                  onDelete={(id) => {
+                    handleDeleteMessage(id).catch(console.error)
+                  }}
+                  onEditPrompt={handleEditPrompt}
+                />
+              ))}
+              <div ref={messagesEndRef} />
+            </div>
+          )}
+        </div>
 
-      <main className="flex-1 min-h-0 flex flex-col overflow-hidden">
-        {activeTab === 'home' && (
-          <HomeView
-            onStartChat={() => {
-              if (serverOnline) {
-                createNewSession().catch(console.error)
-                setActiveTab('chat')
-              }
-            }}
-          />
-        )}
-
-        {activeTab === 'library' && (
-          <LibraryView
-            sessions={sessions}
-            activeSessionId={activeSessionId}
-            onSelectSession={(id) => {
-              setActiveSessionId(id)
-              setActiveTab('chat')
-            }}
-            onDeleteSession={(id) => {
-              handleDeleteSession(id).catch(console.error)
-            }}
-            onNewChat={() => {
-              if (serverOnline) {
-                createNewSession().catch(console.error)
-                setActiveTab('chat')
-              }
-            }}
-          />
-        )}
-
-        {activeTab === 'chat' && (
-          <div className="flex-1 min-h-0 overflow-y-auto flex flex-col">
-            {serverChecking ? (
-              <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">
-                Connecting...
-              </div>
-            ) : messages.length === 0 ? (
-              <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
-                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
-                  <span className="text-lg font-semibold">J</span>
-                </div>
-                <h2 className="text-lg font-semibold">Your conversation</h2>
-                <p className="mt-2 max-w-md text-sm text-muted-foreground">
-                  Send a message to start a conversation with J.A.R.V.I.S.
-                </p>
-              </div>
-            ) : (
-              <div className="mx-auto box-border w-full min-w-0 max-w-3xl px-4 py-2 md:px-6">
-                {messages.map((msg, idx) => (
-                  <ChatMessageItem
-                    key={msg.id}
-                    message={msg}
-                    isLast={idx === messages.length - 1}
-                    isStreaming={isStreaming}
-                    onRegenerate={idx === messages.length - 1 ? handleRegenerate : undefined}
-                    onDelete={(id) => {
-                      handleDeleteMessage(id).catch(console.error)
-                    }}
-                    onEditPrompt={handleEditPrompt}
-                  />
-                ))}
-                <div ref={messagesEndRef} />
-              </div>
-            )}
-          </div>
-        )}
-      </main>
-
-      {activeTab === 'chat' && (
         <ChatInput
           onSendMessage={handleSendMessage}
           isStreaming={isStreaming}
@@ -785,13 +778,7 @@ function App() {
           onUpdateSettings={updateSettings}
           disabled={!serverOnline || serverChecking}
         />
-      )}
-
-      <BottomNav
-        activeTab={activeTab}
-        onTabChange={handleTabChange}
-        onOpenTranscripts={() => setActiveTab('library')}
-      />
+      </div>
 
       <SettingsModal
         isOpen={settingsOpen}

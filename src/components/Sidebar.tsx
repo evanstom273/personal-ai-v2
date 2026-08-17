@@ -109,32 +109,30 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Sidebar Container */}
       <aside
-        className={`fixed top-0 bottom-0 left-0 z-50 w-72 bg-slate-950 border-r border-slate-800/80 flex flex-col transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 ${
+        className={`fixed top-0 bottom-0 left-0 z-50 w-72 surface-glass border-r border-border/80 flex flex-col transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
         {/* Top Header: App Branding */}
-        <div className="p-4 flex items-center justify-between border-b border-slate-900">
+        <div className="p-4 flex items-center justify-between border-b border-border/60">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-500 via-indigo-500 to-purple-500 p-0.5 shadow-lg shadow-cyan-500/20">
-              <div className="w-full h-full bg-slate-950 rounded-[8px] flex items-center justify-center">
-                <Bot className="w-5 h-5 text-cyan-400" />
-              </div>
+            <div className="home-hero-icon flex h-9 w-9 items-center justify-center rounded-xl text-primary">
+                <Bot className="w-5 h-5" />
             </div>
             <div>
-              <h1 className="font-bold text-slate-100 text-sm tracking-tight flex items-center gap-1.5">
+              <h1 className="font-bold text-foreground text-sm tracking-tight flex items-center gap-1.5">
                 Personal AI
-                <span className="text-[8px] font-medium px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                <span className="text-[8px] font-medium px-1.5 py-0.2 rounded bg-primary/15 text-primary border border-primary/25">
                   Local
                 </span>
               </h1>
-              <p className="text-[9px] text-slate-400">Powered by Ollama</p>
+              <p className="text-[9px] text-muted-foreground">Powered by Ollama</p>
             </div>
           </div>
 
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-100 hover:bg-slate-900 rounded-lg lg:hidden"
+            className="btn-ghost rounded-lg p-1.5 lg:hidden"
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
@@ -147,7 +145,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               onNewChat()
               if (window.innerWidth < 1024) onClose()
             }}
-            className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-medium text-sm shadow-md shadow-cyan-500/20 transition-all flex items-center justify-between group cursor-pointer"
+            className="btn-primary w-full flex cursor-pointer items-center justify-between rounded-xl px-4 py-2.5 text-sm font-medium transition-all group"
           >
             <div className="flex items-center gap-2.5">
               <Plus className="w-4 h-4 transition-transform group-hover:rotate-90" />
@@ -162,18 +160,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Search Bar */}
         <div className="px-3 pb-2">
           <div className="relative">
-            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input
               type="text"
               placeholder="Search conversations..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-900/80 border border-slate-800 rounded-xl text-slate-200 placeholder-slate-400 focus:outline-none focus:border-cyan-500/50 transition-colors"
+              className="surface-input w-full rounded-xl py-1.5 pl-8 pr-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-colors"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               >
                 <X className="w-3 h-3" />
               </button>
@@ -182,17 +180,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* Conversations History List */}
-        <div className="flex-1 overflow-y-auto px-3 py-2 space-y-4 scrollbar-thin scrollbar-thumb-slate-800">
+        <div className="flex-1 overflow-y-auto px-3 py-2 space-y-4">
           {grouped.length === 0 ? (
-            <div className="text-center py-8 text-slate-400 text-xs">
-              <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-30 text-slate-400" />
+            <div className="text-center py-8 text-xs text-muted-foreground">
+              <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-30" />
               <p>No chat history yet</p>
-              <p className="text-[8px] text-slate-400 mt-1">Start a conversation above!</p>
+              <p className="text-[8px] mt-1">Start a conversation above!</p>
             </div>
           ) : (
             grouped.map((group) => (
               <div key={group.label} className="space-y-1">
-                <h3 className="px-2 text-[8px] font-bold uppercase tracking-wider text-slate-400">
+                <h3 className="px-2 text-[8px] font-bold uppercase tracking-wider text-muted-foreground">
                   {group.label}
                 </h3>
                 {group.items.map((session) => {
@@ -208,12 +206,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       }}
                       className={`group relative flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium cursor-pointer transition-all ${
                         isActive
-                          ? 'bg-slate-900 text-cyan-300 border border-slate-800 shadow-sm'
-                          : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/50 border border-transparent'
+                          ? 'surface-panel text-primary ring-1 ring-primary/30'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-accent/50 border border-transparent'
                       }`}
                     >
                       <div className="flex items-center gap-2.5 min-w-0 pr-2 flex-1">
-                        <MessageSquare className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-cyan-400' : 'text-slate-400'}`} />
+                        <MessageSquare className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
                         
                         {isEditing ? (
                           <form
@@ -225,7 +223,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                               value={editingTitle}
                               onChange={(e) => setEditingTitle(e.target.value)}
                               autoFocus
-                              className="w-full bg-slate-800 text-slate-100 text-xs px-2 py-0.5 rounded border border-cyan-500 focus:outline-none"
+                              className="surface-input w-full rounded border border-primary px-2 py-0.5 text-xs text-foreground focus:outline-none"
                             />
                             <button
                               type="button"
@@ -236,7 +234,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             </button>
                           </form>
                         ) : (
-                          <span className="truncate text-slate-300 group-hover:text-slate-100">
+                          <span className="truncate text-foreground/90 group-hover:text-foreground">
                             {session.title || 'Untitled Chat'}
                           </span>
                         )}
@@ -246,7 +244,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity">
                           <button
                             onClick={(e) => handleStartRename(session, e)}
-                            className="p-1 text-slate-400 hover:text-cyan-400 transition-colors"
+                            className="btn-ghost p-1 hover:text-primary"
                             title="Rename"
                           >
                             <Edit2 className="w-3 h-3" />
@@ -256,7 +254,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                               e.stopPropagation()
                               onDeleteSession(session.id)
                             }}
-                            className="p-1 text-slate-400 hover:text-rose-400 transition-colors"
+                            className="btn-ghost p-1 hover:text-destructive"
                             title="Delete"
                           >
                             <Trash2 className="w-3 h-3" />
@@ -272,13 +270,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* Sidebar Footer: Model Storage Info */}
-        <div className="p-3 border-t border-slate-900 bg-slate-950/60 space-y-2">
-          <div className="flex items-center justify-between p-2 rounded-xl bg-slate-900/60 border border-slate-800/60 text-xs">
+        <div className="space-y-2 border-t border-border/60 bg-background/40 p-3">
+          <div className="surface-panel flex items-center justify-between rounded-xl p-2 text-xs">
             <div className="flex items-center gap-2">
-              <HardDrive className="w-4 h-4 text-cyan-400" />
+              <HardDrive className="w-4 h-4 text-primary" />
               <div>
-                <p className="text-[9px] font-semibold text-slate-200">Local Directory</p>
-                <code className="text-[8px] text-cyan-400 font-mono">E:\models</code>
+                <p className="text-[9px] font-semibold text-foreground">Local Directory</p>
+                <code className="text-[8px] text-primary font-mono">E:\models</code>
               </div>
             </div>
             <span className="text-[8px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono">
@@ -288,13 +286,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
           <button
             onClick={onOpenSettings}
-            className="w-full flex items-center justify-between p-2 rounded-xl text-xs text-slate-400 hover:text-slate-200 hover:bg-slate-900 transition-colors"
+            className="btn-ghost flex w-full items-center justify-between rounded-xl p-2 text-xs"
           >
             <span className="flex items-center gap-2">
-              <Sliders className="w-3.5 h-3.5 text-slate-400" />
+              <Sliders className="w-3.5 h-3.5 text-muted-foreground" />
               <span>Model Parameters</span>
             </span>
-            <span className="text-[9px] font-mono text-slate-400">{selectedModel}</span>
+            <span className="text-[9px] font-mono text-muted-foreground">{selectedModel}</span>
           </button>
         </div>
       </aside>

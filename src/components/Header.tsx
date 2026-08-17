@@ -47,12 +47,12 @@ export const Header: React.FC<HeaderProps> = ({
 	}
 
 	return (
-		<header className="shrink-0 z-30 flex items-center justify-between h-14 sm:h-16 px-3 sm:px-4 border-b bg-slate-950/80 border-slate-800/70 backdrop-blur-xl text-slate-100 transition-colors pt-[env(safe-area-inset-top)]">
-			<div className="flex items-center gap-1 sm:gap-2 min-w-0">
+		<header className="app-header-glass shrink-0 z-30 flex h-14 sm:h-16 items-center justify-between px-3 sm:px-4 pt-[env(safe-area-inset-top)] text-foreground transition-colors">
+			<div className="flex min-w-0 items-center gap-1 sm:gap-2">
 				<button
 					type="button"
 					onClick={() => setSidebarOpen(!sidebarOpen)}
-					className="p-2 text-slate-400 rounded-lg hover:text-slate-100 hover:bg-slate-800/60 transition-colors shrink-0"
+					className="btn-ghost shrink-0 rounded-lg p-2"
 					title={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
 				>
 					<Menu className="w-5 h-5" />
@@ -61,13 +61,13 @@ export const Header: React.FC<HeaderProps> = ({
 				<button
 					type="button"
 					onClick={onNewChat}
-					className="p-2 text-slate-400 rounded-lg hover:text-slate-100 hover:bg-slate-800/60 transition-colors sm:hidden shrink-0"
+					className="btn-ghost shrink-0 rounded-lg p-2 sm:hidden"
 					title="New Chat"
 				>
 					<Plus className="w-5 h-5" />
 				</button>
 
-				<span className="hidden sm:inline text-sm font-semibold text-slate-300 truncate">
+				<span className="hidden truncate text-sm font-semibold text-muted-foreground sm:inline">
 					Personal AI
 				</span>
 			</div>
@@ -79,7 +79,7 @@ export const Header: React.FC<HeaderProps> = ({
 					<button
 						type="button"
 						onClick={onClearCurrentChat}
-						className="p-2 text-slate-400 rounded-lg hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
+						className="btn-ghost rounded-lg p-2 hover:text-destructive"
 						title="Clear current messages"
 					>
 						<Trash2 className="w-4 h-4" />
@@ -89,7 +89,7 @@ export const Header: React.FC<HeaderProps> = ({
 				<button
 					type="button"
 					onClick={handleShare}
-					className="p-2 text-slate-400 rounded-lg hover:text-slate-100 hover:bg-slate-800/60 transition-colors hidden sm:flex"
+					className="btn-ghost hidden rounded-lg p-2 sm:flex"
 					title="Share link"
 				>
 					{copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Share2 className="w-4 h-4" />}
@@ -98,7 +98,7 @@ export const Header: React.FC<HeaderProps> = ({
 				<button
 					type="button"
 					onClick={toggleTheme}
-					className="p-2 text-slate-400 rounded-lg hover:text-slate-100 hover:bg-slate-800/60 transition-colors"
+					className="btn-ghost rounded-lg p-2"
 					title="Toggle light/dark mode"
 				>
 					{settings.theme === 'light' ? (
@@ -111,7 +111,7 @@ export const Header: React.FC<HeaderProps> = ({
 				<button
 					type="button"
 					onClick={onOpenSettings}
-					className="p-2 text-slate-400 rounded-lg hover:text-slate-100 hover:bg-slate-800/60 transition-colors"
+					className="btn-ghost rounded-lg p-2"
 					title="Chat settings"
 				>
 					<SettingsIcon className="w-4 h-4" />

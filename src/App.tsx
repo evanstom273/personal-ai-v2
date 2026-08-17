@@ -34,6 +34,7 @@ import { ChatMessageItem } from './components/ChatMessageItem'
 import { ChatInput } from './components/ChatInput'
 import { SettingsModal } from './components/SettingsModal'
 import { ServerOfflineBanner } from './components/ServerOfflineBanner'
+import { useSidebarLayout } from './hooks/useSidebarLayout'
 
 const LEGACY_STORAGE_KEYS = {
   SESSIONS: 'personal_ai_chat_sessions',
@@ -52,7 +53,7 @@ function App() {
   const [activeSessionId, setActiveSessionId] = useState<string>('')
   const [settings, setSettings] = useState<ChatSettings>(DEFAULT_SETTINGS)
 
-  const [sidebarOpen, setSidebarOpen] = useState<boolean>(true)
+  const { sidebarOpen, setSidebarOpen } = useSidebarLayout()
   const [settingsOpen, setSettingsOpen] = useState<boolean>(false)
   const [isStreaming, setIsStreaming] = useState<boolean>(false)
   const [serverOnline, setServerOnline] = useState<boolean>(false)
@@ -687,7 +688,7 @@ function App() {
 
   return (
     <div
-      className={`app-shell flex overflow-hidden selection:bg-primary/30 selection:text-primary-foreground ${
+      className={`app-shell flex overflow-hidden overflow-x-hidden selection:bg-primary/30 selection:text-primary-foreground ${
         settings.theme === 'light' ? 'theme-light' : ''
       }`}
     >
@@ -711,7 +712,7 @@ function App() {
         onOpenSettings={() => setSettingsOpen(true)}
       />
 
-      <div className="flex-1 flex flex-col min-w-0 min-h-0 h-full overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 w-full max-w-full min-h-0 h-full overflow-hidden">
         {!serverOnline && !serverChecking && (
           <ServerOfflineBanner
             onRetry={() => connectToServer()}

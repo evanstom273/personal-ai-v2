@@ -52,8 +52,8 @@ export const Header: React.FC<HeaderProps> = ({
 				<button
 					type="button"
 					onClick={() => setSidebarOpen(!sidebarOpen)}
-					className="btn-ghost shrink-0 rounded-lg p-2"
-					title={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+					className="btn-ghost shrink-0 rounded-lg p-2 xl:hidden"
+					title={sidebarOpen ? 'Close menu' : 'Open menu'}
 				>
 					<Menu className="w-5 h-5" />
 				</button>

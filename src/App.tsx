@@ -37,34 +37,46 @@ function App() {
 
   const abortControllerRef = useRef<AbortController | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const initialLoadDoneRef = useRef(false)
+  const skipHostRefreshRef = useRef(true)
+
+  const applyFetchedModels = (fetchedModels: LocalModel[], preferredModel?: string | null) => {
+    setModels(fetchedModels)
+    if (fetchedModels.length === 0) return
+
+    const activeModel = preferredModel ?? selectedModel
+    const modelStillExists = fetchedModels.some((m) => m.name === activeModel)
+    if (!modelStillExists) {
+      setSelectedModel(fetchedModels[0].name)
+    }
+  }
 
   // 1. Initial Load: Settings, Models, Sessions
   useEffect(() => {
-    // Load Settings
-    const savedSettings = localStorage.getItem(STORAGE_KEYS.SETTINGS)
-    if (savedSettings) {
+    const savedSettingsRaw = localStorage.getItem(STORAGE_KEYS.SETTINGS)
+    const savedModel = localStorage.getItem(STORAGE_KEYS.ACTIVE_MODEL)
+    let parsedSettings = DEFAULT_SETTINGS
+
+    if (savedSettingsRaw) {
       try {
-        setSettings(JSON.parse(savedSettings))
+        parsedSettings = { ...DEFAULT_SETTINGS, ...JSON.parse(savedSettingsRaw) }
+        setSettings(parsedSettings)
       } catch (e) {
         console.error('Failed to parse saved settings', e)
       }
     }
 
-    // Load Active Model
-    const savedModel = localStorage.getItem(STORAGE_KEYS.ACTIVE_MODEL)
     if (savedModel) {
       setSelectedModel(savedModel)
     }
 
-    // Load Models from local Ollama endpoint
-    fetchLocalModels().then((fetchedModels) => {
-      setModels(fetchedModels)
-      if (fetchedModels.length > 0 && !savedModel) {
-        setSelectedModel(fetchedModels[0].name)
-      }
+    fetchLocalModels(parsedSettings.ollamaHost).then((fetchedModels) => {
+      applyFetchedModels(fetchedModels, savedModel)
     })
 
-    // Load Saved Chat Sessions
+    skipHostRefreshRef.current = false
+    initialLoadDoneRef.current = true
+
     const savedSessions = localStorage.getItem(STORAGE_KEYS.SESSIONS)
     if (savedSessions) {
       try {
@@ -78,6 +90,14 @@ function App() {
       }
     }
   }, [])
+
+  useEffect(() => {
+    if (skipHostRefreshRef.current || !initialLoadDoneRef.current) return
+
+    fetchLocalModels(settings.ollamaHost).then((fetchedModels) => {
+      applyFetchedModels(fetchedModels)
+    })
+  }, [settings.ollamaHost])
 
   // 2. Persist Sessions to localStorage
   useEffect(() => {
@@ -497,6 +517,15 @@ function App() {
         onClose={() => setSettingsOpen(false)}
         settings={settings}
         onSaveSettings={(newSettings) => setSettings(newSettings)}
+        onModelsRefresh={(fetchedModels) => {
+          setModels(fetchedModels)
+          if (
+            fetchedModels.length > 0 &&
+            !fetchedModels.some((model) => model.name === selectedModel)
+          ) {
+            setSelectedModel(fetchedModels[0].name)
+          }
+        }}
       />
     </div>
   )

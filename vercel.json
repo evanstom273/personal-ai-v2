@@ -5,10 +5,6 @@
 	"outputDirectory": "dist",
 	"installCommand": "npm ci",
 	"ignoreCommand": "bash scripts/vercel-ignore-build.sh",
-	"rewrites": [
-		{ "handle": "filesystem" },
-		{ "source": "/(.*)", "destination": "/index.html" }
-	],
 	"github": {
 		"autoAlias": true
 	}

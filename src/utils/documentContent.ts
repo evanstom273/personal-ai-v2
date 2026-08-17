@@ -4,6 +4,10 @@ import type {
 	DocumentRecord,
 	DocumentSource,
 } from '@/storage/types'
+import {
+	markdownHtmlWikiLinksToMarkdown,
+	wikiLinksToMarkdownHtml,
+} from '@/utils/wikiLinks'
 
 marked.setOptions({
 	gfm: true,
@@ -283,7 +287,8 @@ export function documentContentToEditorHtml(
 	document: Pick<DocumentRecord, 'content' | 'contentFormat'>,
 ): string {
 	if (document.contentFormat === 'markdown') {
-		return markdownToHtml(document.content)
+		const withWiki = wikiLinksToMarkdownHtml(document.content)
+		return markdownToHtml(withWiki)
 	}
 
 	return document.content.trim() || '<p></p>'
@@ -294,7 +299,8 @@ export function editorHtmlToDocumentContent(
 	format: DocumentContentFormat,
 ): string {
 	if (format === 'markdown') {
-		return htmlToMarkdown(html)
+		const withWiki = markdownHtmlWikiLinksToMarkdown(html)
+		return htmlToMarkdown(withWiki)
 	}
 
 	return html.trim() || '<p></p>'
@@ -354,11 +360,14 @@ export interface CreateDocumentDefaults {
 	source?: DocumentSource
 	contentFormat?: DocumentContentFormat
 	readOnly?: boolean
+	collectionId?: string
+	tags?: string[]
+	lastEditedBy?: 'user' | 'assistant'
 }
 
 export function resolveCreateDocumentDefaults(
 	options: CreateDocumentDefaults = {},
-): Required<CreateDocumentDefaults> {
+): Pick<Required<CreateDocumentDefaults>, 'source' | 'contentFormat' | 'readOnly'> {
 	const source = options.source ?? 'user'
 	return {
 		source,

@@ -64,7 +64,7 @@ export function buildOperationalCapabilitiesInstruction(): string {
 		'- One continuous conversation. Image and music use separate models; the app routes natural requests automatically.',
 		'- Video generation is not supported — offer image or music instead.',
 		'- Do not ask the user to use magic keywords. Plain conversational language is enough.',
-		'- Documents, projects, reminders, and long-term memory are available via tools and injected reference sections below.',
+		'- Documents and knowledge notes are stored centrally on the PersonalAI server. Use knowledge tools (`search_knowledge`, `list_notes`, `read_note`, etc.) to retrieve relevant notes — do not assume full note bodies are in context.',
 		'- Document catalog entries are previews only — use read_document for full text before editing.',
 		'- Projects are kanban boards (todo / doing / done) separate from documents.',
 		'- Reminders and schedules live in the app; use reminder tools to manage them.',

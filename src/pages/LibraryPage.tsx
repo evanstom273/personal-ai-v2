@@ -1,8 +1,6 @@
 import {
 	CalendarClock,
-	Copy,
 	Download,
-	FilePlus2,
 	FileText,
 	FolderKanban,
 	Image,
@@ -11,13 +9,10 @@ import {
 	Pencil,
 	Search,
 	Trash2,
-	Upload,
 } from 'lucide-react'
-import { DocumentTemplatePicker } from '@/components/documents/DocumentTemplatePicker'
-import type { DocumentTemplate } from '@/data/documentTemplates'
-import { useDualPaneNavigation } from '@/hooks/useDualPaneNavigation'
-import { useMemo, useRef, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { KnowledgeWorkspace } from '@/components/knowledge/KnowledgeWorkspace'
+import { useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import {
 	DropdownMenu,
@@ -29,18 +24,14 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { MediaLightbox } from '@/components/media/MediaLightbox'
 import { ScheduleSection } from '@/components/schedule/ScheduleSection'
 import { ProjectsSection } from '@/components/projects/ProjectsSection'
-import { useDocuments } from '@/hooks/useDocuments'
 import { useLibraryMedia } from '@/hooks/useLibraryMedia'
 import {
 	deleteLibraryMediaItem,
 	renameLibraryMediaItem,
 } from '@/services/library/libraryMediaService'
-import { updateDocument } from '@/services/documents/documentService'
-import { uploadDocumentsFromFiles } from '@/services/documents/documentUploadService'
 import type { LibraryMediaKind, LibraryMediaRecord } from '@/storage/types'
 import { formatTimestamp } from '@/utils/documentContent'
 import {
-	downloadDocument,
 	downloadLibraryMediaItem,
 } from '@/utils/downloads'
 import { cn } from '@/utils/cn'
@@ -53,7 +44,7 @@ import {
 const LIBRARY_SECTIONS = [
 	{ id: 'schedule', label: 'Schedule', icon: CalendarClock },
 	{ id: 'projects', label: 'Projects', icon: FolderKanban },
-	{ id: 'documents', label: 'Documents', icon: FileText },
+	{ id: 'documents', label: 'Knowledge', icon: FileText },
 ] as const
 
 const DOCUMENT_TABS = [
@@ -158,7 +149,7 @@ export function LibraryPage() {
 					) : activeSection === 'projects' ? (
 						<ProjectsSection />
 					) : activeDocumentTab === 'documents' ? (
-						<DocumentsSection query={query} />
+						<KnowledgeWorkspace query={query} />
 					) : (
 						<MediaSection
 							kind={activeDocumentTab === 'images' ? 'image' : 'audio'}
@@ -176,271 +167,6 @@ export function LibraryPage() {
 	)
 }
 
-function DocumentTitleLink({
-	documentId,
-	title,
-}: {
-	documentId: string
-	title: string
-}) {
-	const { isDualPaneActive, openInSecondaryPane } = useDualPaneNavigation()
-	const targetRoute = `/library/documents/${documentId}`
-
-	return (
-		<Link
-			to={targetRoute}
-			onClick={(event) => {
-				if (isDualPaneActive) {
-					event.preventDefault()
-					openInSecondaryPane(targetRoute)
-				}
-			}}
-			className="block truncate font-medium hover:underline"
-		>
-			{title}
-		</Link>
-	)
-}
-
-function DocumentsSection({ query }: { query: string }) {
-	const { openDocument } = useDualPaneNavigation()
-	const {
-		documents,
-		isLoading,
-		refreshDocuments,
-		createDocumentFromTemplate,
-		removeDocument,
-		copyDocument,
-	} = useDocuments()
-	const [renamingId, setRenamingId] = useState<string | null>(null)
-	const [renameValue, setRenameValue] = useState('')
-	const [templatePickerOpen, setTemplatePickerOpen] = useState(false)
-	const [uploadError, setUploadError] = useState<string | null>(null)
-	const [isUploading, setIsUploading] = useState(false)
-	const uploadInputRef = useRef<HTMLInputElement>(null)
-
-	const filteredDocuments = useMemo(() => {
-		const normalized = query.trim().toLowerCase()
-		if (!normalized) {
-			return documents
-		}
-		return documents.filter((document) =>
-			document.title.toLowerCase().includes(normalized),
-		)
-	}, [documents, query])
-
-	async function handleCreate(): Promise<void> {
-		setTemplatePickerOpen(true)
-	}
-
-	async function handleTemplateSelect(template: DocumentTemplate | null): Promise<void> {
-		setTemplatePickerOpen(false)
-		const document = await createDocumentFromTemplate(template)
-		openDocument(document.id)
-	}
-
-	async function handleUpload(files: File[]): Promise<void> {
-		if (files.length === 0) {
-			return
-		}
-
-		setUploadError(null)
-		setIsUploading(true)
-
-		try {
-			const { documents, errors } = await uploadDocumentsFromFiles(files)
-			await refreshDocuments()
-
-			if (documents.length === 1) {
-				openDocument(documents[0].id)
-			}
-
-			if (errors.length > 0) {
-				setUploadError(errors.join(' '))
-			}
-		} finally {
-			setIsUploading(false)
-		}
-	}
-
-	async function handleRename(documentId: string): Promise<void> {
-		const trimmed = renameValue.trim()
-		if (!trimmed) {
-			return
-		}
-
-		await updateDocument(documentId, { title: trimmed })
-		setRenamingId(null)
-		setRenameValue('')
-		await refreshDocuments()
-	}
-
-	return (
-		<div className="space-y-4">
-			<input
-				ref={uploadInputRef}
-				type="file"
-				multiple
-				accept=".txt,.md,.markdown,.html,.htm,.json,.csv,.xml,.yml,.yaml,.pdf,.docx,text/*,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-				className="hidden"
-				onChange={(event) => {
-					const files = Array.from(event.target.files ?? [])
-					if (files.length > 0) {
-						void handleUpload(files)
-					}
-					event.target.value = ''
-				}}
-			/>
-
-			<DocumentTemplatePicker
-				open={templatePickerOpen}
-				onOpenChange={setTemplatePickerOpen}
-				onSelect={(template) => void handleTemplateSelect(template)}
-			/>
-
-			<div className="flex flex-wrap justify-end gap-2">
-				<Button
-					type="button"
-					variant="outline"
-					disabled={isUploading}
-					onClick={() => uploadInputRef.current?.click()}
-				>
-					<Upload className="h-4 w-4" />
-					{isUploading ? 'Uploading…' : 'Upload files'}
-				</Button>
-				<Button onClick={() => void handleCreate()}>
-					<FilePlus2 className="h-4 w-4" />
-					New document
-				</Button>
-			</div>
-
-			{uploadError ? (
-				<p className="text-sm text-destructive">{uploadError}</p>
-			) : null}
-
-			{isLoading ? (
-				<p className="text-sm text-muted-foreground">Loading documents…</p>
-			) : filteredDocuments.length === 0 ? (
-				<EmptyState
-					message={
-						query.trim()
-							? 'No documents match your search.'
-							: 'No documents yet. Upload files or create a new document.'
-					}
-				/>
-			) : (
-				<div className="space-y-2">
-					{filteredDocuments.map((document) => (
-						<div
-							key={document.id}
-							className="flex items-center gap-3 surface-panel rounded-xl px-4 py-3"
-						>
-							<div className="min-w-0 flex-1">
-								{renamingId === document.id ? (
-									<input
-										autoFocus
-										value={renameValue}
-										onChange={(event) => setRenameValue(event.target.value)}
-										onKeyDown={(event) => {
-											if (event.key === 'Enter') {
-												void handleRename(document.id)
-											}
-											if (event.key === 'Escape') {
-												setRenamingId(null)
-											}
-										}}
-										className="w-full rounded-md surface-input px-2 py-1 text-sm outline-none"
-									/>
-								) : (
-									<DocumentTitleLink
-										documentId={document.id}
-										title={document.title}
-									/>
-								)}
-								<p className="mt-1 text-xs text-muted-foreground">
-									Created {formatTimestamp(document.createdAt)} · Modified{' '}
-									{formatTimestamp(document.updatedAt)}
-									{document.source === 'upload' ? ' · Uploaded' : ''}
-								</p>
-							</div>
-
-							<DropdownMenu>
-								<DropdownMenuTrigger
-									hideChevron
-									className="h-9 w-9 justify-center px-0"
-									aria-label="Document actions"
-								>
-									<MoreHorizontal className="h-4 w-4" />
-								</DropdownMenuTrigger>
-								<DropdownMenuContent align="end">
-									<DropdownMenuItem
-										onSelect={() => {
-											openDocument(document.id)
-										}}
-									>
-										Open
-									</DropdownMenuItem>
-									<DropdownMenuItem
-										onSelect={() => downloadDocument(document, 'txt')}
-									>
-										<Download className="h-4 w-4" />
-										Download TXT
-									</DropdownMenuItem>
-									<DropdownMenuItem
-										onSelect={() => downloadDocument(document, 'md')}
-									>
-										<Download className="h-4 w-4" />
-										Download MD
-									</DropdownMenuItem>
-									<DropdownMenuItem
-										onSelect={() => downloadDocument(document, 'pdf')}
-									>
-										<Download className="h-4 w-4" />
-										Download PDF
-									</DropdownMenuItem>
-									<DropdownMenuItem
-										onSelect={() => {
-											setRenamingId(document.id)
-											setRenameValue(document.title)
-										}}
-									>
-										<Pencil className="h-4 w-4" />
-										Rename
-									</DropdownMenuItem>
-									<DropdownMenuItem
-										onSelect={() => {
-											void copyDocument(document.id).then((copy) => {
-												openDocument(copy.id)
-											})
-										}}
-									>
-										<Copy className="h-4 w-4" />
-										Duplicate
-									</DropdownMenuItem>
-									<DropdownMenuItem
-										className="text-destructive"
-										onSelect={() => {
-											if (
-												window.confirm(
-													`Delete "${document.title}" permanently?`,
-												)
-											) {
-												void removeDocument(document.id)
-											}
-										}}
-									>
-										<Trash2 className="h-4 w-4" />
-										Delete
-									</DropdownMenuItem>
-								</DropdownMenuContent>
-							</DropdownMenu>
-						</div>
-					))}
-				</div>
-			)}
-		</div>
-	)
-}
 
 function MediaSection({
 	kind,

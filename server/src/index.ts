@@ -3,6 +3,7 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { loadConfig } from './config.js'
 import { getDb } from './db/connection.js'
+import { createKnowledgeRoutes } from './routes/knowledge.js'
 import { createPersonalAiRoutes } from './routes/personalai.js'
 import { checkOllamaHealth, proxyOllamaRequest } from './services/ollamaProxy.js'
 
@@ -33,6 +34,7 @@ app.get('/health', async (c) => {
 
 const personalAi = createPersonalAiRoutes(config)
 app.route('/api/personalai', personalAi)
+app.route('/api/personalai/knowledge', createKnowledgeRoutes(config))
 
 app.get('/api/tags', async (c) => {
 	try {

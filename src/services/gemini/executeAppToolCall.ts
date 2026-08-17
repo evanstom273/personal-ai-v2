@@ -1,7 +1,7 @@
 import {
-	DOCUMENT_TOOL_DECLARATIONS,
-	executeDocumentToolCall,
-} from '@/services/gemini/documentTools'
+	KNOWLEDGE_TOOL_DECLARATIONS,
+	executeKnowledgeToolCall,
+} from '@/services/gemini/knowledgeTools'
 import {
 	executeProjectToolCall,
 	isProjectToolName,
@@ -82,7 +82,7 @@ function convertDeclarationToOllamaTool(declaration: GeminiToolDeclaration) {
 }
 
 const APP_TOOL_DECLARATIONS = [
-	...DOCUMENT_TOOL_DECLARATIONS,
+	...KNOWLEDGE_TOOL_DECLARATIONS,
 	...PROJECT_TOOL_DECLARATIONS,
 	...REMINDER_TOOL_DECLARATIONS,
 	...HOME_TODO_TOOL_DECLARATIONS,
@@ -139,7 +139,7 @@ export async function executeAppToolCall(
 		}
 	}
 
-	const toolResult = await executeDocumentToolCall(name, args)
+	const toolResult = await executeKnowledgeToolCall(name, args)
 	const documentLink = extractDocumentLinkFromToolResult(
 		name,
 		toolResult.response,

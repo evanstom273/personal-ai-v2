@@ -226,6 +226,8 @@ export async function executeDocumentToolCall(
 					typeof args.content === 'string'
 						? normalizeMarkdownContent(args.content)
 						: undefined,
+				lastEditedBy: 'assistant',
+				saveRevision: typeof args.content === 'string',
 			})
 
 			return {

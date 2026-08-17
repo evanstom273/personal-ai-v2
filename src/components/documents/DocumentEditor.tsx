@@ -90,6 +90,7 @@ interface DocumentEditorProps {
 	className?: string
 	documentTitle?: string
 	preferences?: UserPreferences
+	onWikiLinkClick?: (targetTitle: string) => void
 }
 
 export function DocumentEditor({
@@ -100,6 +101,7 @@ export function DocumentEditor({
 	className,
 	documentTitle = 'Untitled document',
 	preferences,
+	onWikiLinkClick,
 }: DocumentEditorProps) {
 	const [hasSelection, setHasSelection] = useState(false)
 	const [wordCount, setWordCount] = useState(0)
@@ -139,7 +141,21 @@ export function DocumentEditor({
 		editorProps: {
 			attributes: {
 				class:
-					'document-editor-content min-h-[50vh] px-4 py-4 focus:outline-none md:px-6',
+					'document-editor-content min-h-[50vh] px-4 py-4 focus:outline-none md:px-6 [&_.wiki-link]:text-primary [&_.wiki-link]:underline [&_.wiki-link]:underline-offset-4',
+			},
+			handleClick: (_view, _pos, event) => {
+				const target = event.target as HTMLElement | null
+				const anchor = target?.closest('a[data-wiki-link]') as HTMLAnchorElement | null
+				if (!anchor || !onWikiLinkClick) {
+					return false
+				}
+				const wikiTarget = anchor.getAttribute('data-wiki-link')
+				if (wikiTarget) {
+					event.preventDefault()
+					onWikiLinkClick(wikiTarget)
+					return true
+				}
+				return false
 			},
 		},
 	})

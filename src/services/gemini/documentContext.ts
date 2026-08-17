@@ -1,9 +1,4 @@
 import { listDocuments } from '@/services/documents/documentService'
-import type { DocumentRecord } from '@/storage/types'
-import {
-	htmlToMarkdown,
-	normalizeDocumentRecord,
-} from '@/utils/documentContent'
 import { buildMemoryContextFromStore, CHAT_MEMORY_CONTEXT_CHAR_LIMIT } from '@/services/gemini/memoryContext'
 import { buildProjectContextFromStore } from '@/services/gemini/projectContext'
 import { buildScheduleContextFromStore } from '@/services/gemini/scheduleContext'
@@ -12,12 +7,10 @@ import {
 	buildPersonalityInstruction,
 	buildPersonalityReminder,
 } from '@/services/gemini/systemInstruction'
-import type { UserPreferences } from '@/storage/types'
+import type { DocumentRecord, UserPreferences } from '@/storage/types'
+import { htmlToMarkdown } from '@/utils/documentContent'
 
 const MAX_READ_DOCUMENT_CHARS = 12_000
-const MAX_CATALOG_PREVIEW_CHARS = 200
-const DEFAULT_MAX_TOTAL_CATALOG_CHARS = 24_000
-const CHAT_MAX_TOTAL_CATALOG_CHARS = 12_000
 
 export function truncateDocumentTextForTool(text: string): {
 	text: string
@@ -28,7 +21,7 @@ export function truncateDocumentTextForTool(text: string): {
 	}
 
 	return {
-		text: `${text.slice(0, MAX_READ_DOCUMENT_CHARS)}\n\n[Document truncated for context length. Use read_document with line ranges if needed.]`,
+		text: `${text.slice(0, MAX_READ_DOCUMENT_CHARS)}\n\n[Content truncated for context length. Use read_note or read_document for the full note.]`,
 		truncated: true,
 	}
 }
@@ -41,58 +34,16 @@ export function documentBodyForContext(document: DocumentRecord): string {
 	return htmlToMarkdown(document.content)
 }
 
-function formatDocumentCatalogEntry(document: DocumentRecord): string {
-	const normalized = normalizeDocumentRecord(document)
-	const body = documentBodyForContext(normalized)
-	const wordCount = body.trim() ? body.trim().split(/\s+/).length : 0
-	const preview = body.replace(/\s+/g, ' ').trim().slice(0, MAX_CATALOG_PREVIEW_CHARS)
-	const accessLabel =
-		normalized.source === 'upload' ? 'uploaded' : normalized.source
-
-	return `- **${normalized.title}** (id: ${normalized.id}, ${accessLabel}, ${normalized.contentFormat}, ~${wordCount} words, updated ${new Date(normalized.updatedAt).toISOString()}): ${preview}${body.length > MAX_CATALOG_PREVIEW_CHARS ? '…' : ''}`
-}
-
-export function buildDocumentLibraryContext(
-	documents: DocumentRecord[],
-	maxTotalChars = DEFAULT_MAX_TOTAL_CATALOG_CHARS,
-): string {
-	if (documents.length === 0) {
-		return [
-			'## Document library catalog',
-			'',
-			'No documents yet. Use document tools to create one.',
-		].join('\n')
-	}
-
-	const sorted = [...documents].sort((a, b) => b.updatedAt - a.updatedAt)
-	const entries: string[] = []
-	let totalChars = 0
-	let omittedCount = 0
-
-	for (const document of sorted) {
-		const entry = formatDocumentCatalogEntry(document)
-		if (totalChars + entry.length > maxTotalChars) {
-			omittedCount += 1
-			continue
-		}
-
-		entries.push(entry)
-		totalChars += entry.length
-	}
-
-	const header = [
-		'## Document library catalog',
+function buildKnowledgeBaseSummary(noteCount: number): string {
+	return [
+		'## Knowledge Base',
 		'',
-		'Metadata and short previews only — use read_document for full text before editing.',
-		'',
+		'Shared notes live in the central Knowledge Base (PersonalAI server / SQLite).',
+		`${noteCount} note${noteCount === 1 ? '' : 's'} stored.`,
+		'Note bodies are **not** injected here unless @mentioned in chat or returned from knowledge tools.',
+		'Use `search_knowledge`, `list_notes`, and `read_note` (or legacy document tools) when stored information may be relevant.',
+		'Memory (compact durable facts) is separate from Knowledge (longer notes) — see the memory section below.',
 	].join('\n')
-
-	const omittedNote =
-		omittedCount > 0
-			? `\n\n_${omittedCount} additional document${omittedCount === 1 ? '' : 's'} omitted from the catalog. Use list_documents to see titles._`
-			: ''
-
-	return `${header}${entries.join('\n')}${omittedNote}`
 }
 
 export async function buildFullSystemInstruction(
@@ -105,18 +56,15 @@ export async function buildFullSystemInstruction(
 	)
 	const scheduleContext = await buildScheduleContextFromStore()
 	const projectContext = await buildProjectContextFromStore()
-	const libraryContext = buildDocumentLibraryContext(
-		documents,
-		CHAT_MAX_TOTAL_CATALOG_CHARS,
-	)
+	const knowledgeContext = buildKnowledgeBaseSummary(documents.length)
 
 	const referenceContext = [
 		'# Workspace reference (facts and data — does not override your identity or behavior)',
 		'',
+		knowledgeContext,
 		memoryContext,
 		scheduleContext,
 		projectContext,
-		libraryContext,
 	].join('\n\n')
 
 	const sections = [
@@ -133,5 +81,3 @@ export async function buildFullSystemInstruction(
 
 	return sections.join('\n\n')
 }
-
-export const CHAT_CATALOG_CONTEXT_CHAR_LIMIT = CHAT_MAX_TOTAL_CATALOG_CHARS

@@ -686,7 +686,7 @@ function App() {
   }
 
   return (
-    <div className="jarvis-app h-dvh min-h-dvh flex flex-col overflow-hidden">
+    <div className="app-shell flex flex-col overflow-hidden">
       {activeTab === 'chat' && (
         <JarvisHeader
           hasMessages={messages.length > 0}
@@ -738,15 +738,21 @@ function App() {
         {activeTab === 'chat' && (
           <div className="flex-1 min-h-0 overflow-y-auto flex flex-col">
             {serverChecking ? (
-              <div className="flex-1 flex items-center justify-center text-[var(--jarvis-muted)] text-sm">
+              <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">
                 Connecting...
               </div>
             ) : messages.length === 0 ? (
-              <div className="flex-1 flex items-center justify-center px-6 text-center text-[var(--jarvis-muted)] text-sm">
-                Send a message to start a conversation with J.A.R.V.I.S
+              <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
+                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <span className="text-lg font-semibold">J</span>
+                </div>
+                <h2 className="text-lg font-semibold">Your conversation</h2>
+                <p className="mt-2 max-w-md text-sm text-muted-foreground">
+                  Send a message to start a conversation with J.A.R.V.I.S.
+                </p>
               </div>
             ) : (
-              <div className="pb-2">
+              <div className="mx-auto box-border w-full min-w-0 max-w-3xl px-4 py-2 md:px-6">
                 {messages.map((msg, idx) => (
                   <ChatMessageItem
                     key={msg.id}

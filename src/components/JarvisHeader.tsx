@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { Phone, Download, Share2, Trash2 } from 'lucide-react'
+import { cn } from '../utils/cn'
 
 const APP_VERSION = 'v2.1.5'
 
@@ -28,49 +29,56 @@ export const JarvisHeader: React.FC<JarvisHeaderProps> = ({ onClearChat, hasMess
 	}
 
 	return (
-		<header className="shrink-0 flex items-start justify-between px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 border-b border-[var(--jarvis-border)] bg-[var(--jarvis-bg)]">
-			<div>
-				<h1 className="text-lg font-bold text-[var(--jarvis-text)] tracking-tight">J.A.R.V.I.S</h1>
-				<p className="text-xs text-[var(--jarvis-muted)] mt-0.5">{APP_VERSION}</p>
-			</div>
+		<header
+			className={cn(
+				'app-header-glass relative z-40 shrink-0 px-4 pb-3 md:px-6',
+				'pt-[max(0.75rem,env(safe-area-inset-top))]',
+			)}
+		>
+			<div className="flex min-w-0 items-start justify-between gap-3">
+				<div className="min-w-0 flex-1">
+					<h1 className="truncate text-base font-semibold md:text-lg">J.A.R.V.I.S</h1>
+					<p className="truncate text-xs text-muted-foreground mt-0.5">{APP_VERSION}</p>
+				</div>
 
-			<div className="flex items-center gap-1 text-[var(--jarvis-muted)]">
-				<button
-					type="button"
-					className="p-2 rounded-lg hover:text-[var(--jarvis-text)] hover:bg-[var(--jarvis-surface)] transition-colors"
-					title="Call"
-					aria-label="Call"
-				>
-					<Phone className="w-5 h-5" strokeWidth={1.75} />
-				</button>
-				<button
-					type="button"
-					onClick={handleDownload}
-					className="p-2 rounded-lg hover:text-[var(--jarvis-text)] hover:bg-[var(--jarvis-surface)] transition-colors"
-					title="Download"
-					aria-label="Download"
-				>
-					<Download className="w-5 h-5" strokeWidth={1.75} />
-				</button>
-				<button
-					type="button"
-					onClick={handleShare}
-					className="p-2 rounded-lg hover:text-[var(--jarvis-text)] hover:bg-[var(--jarvis-surface)] transition-colors"
-					title={copied ? 'Copied!' : 'Share'}
-					aria-label="Share"
-				>
-					<Share2 className="w-5 h-5" strokeWidth={1.75} />
-				</button>
-				<button
-					type="button"
-					onClick={onClearChat}
-					disabled={!hasMessages}
-					className="p-2 rounded-lg hover:text-[var(--jarvis-text)] hover:bg-[var(--jarvis-surface)] transition-colors disabled:opacity-30"
-					title="Delete chat"
-					aria-label="Delete chat"
-				>
-					<Trash2 className="w-5 h-5" strokeWidth={1.75} />
-				</button>
+				<div className="flex shrink-0 items-center gap-0.5 text-muted-foreground">
+					<button
+						type="button"
+						className="btn-ghost rounded-lg p-2"
+						title="Call"
+						aria-label="Call"
+					>
+						<Phone className="h-5 w-5" strokeWidth={1.75} />
+					</button>
+					<button
+						type="button"
+						onClick={handleDownload}
+						className="btn-ghost rounded-lg p-2"
+						title="Download"
+						aria-label="Download"
+					>
+						<Download className="h-5 w-5" strokeWidth={1.75} />
+					</button>
+					<button
+						type="button"
+						onClick={handleShare}
+						className="btn-ghost rounded-lg p-2"
+						title={copied ? 'Copied!' : 'Share'}
+						aria-label="Share"
+					>
+						<Share2 className="h-5 w-5" strokeWidth={1.75} />
+					</button>
+					<button
+						type="button"
+						onClick={onClearChat}
+						disabled={!hasMessages}
+						className="btn-ghost rounded-lg p-2 disabled:opacity-30"
+						title="Delete chat"
+						aria-label="Delete chat"
+					>
+						<Trash2 className="h-5 w-5" strokeWidth={1.75} />
+					</button>
+				</div>
 			</div>
 		</header>
 	)

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import {
 	User,
 	Bot,
@@ -7,10 +7,11 @@ import {
 	ChevronDown,
 	ChevronRight,
 	Brain,
-	Edit2,
+	Pencil,
 	FileCode,
 	Volume2,
-	List,
+	Square,
+	TextSelect,
 	Loader2,
 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
@@ -19,6 +20,7 @@ import 'highlight.js/styles/github-dark.css'
 import type { ChatMessage } from '../types/chat'
 import { imageAttachmentToDataUrl } from '../utils/fileAttachments'
 import { formatMessageTimestamp } from '../utils/formatDate'
+import { cn } from '../utils/cn'
 
 interface ChatMessageItemProps {
 	message: ChatMessage
@@ -29,20 +31,116 @@ interface ChatMessageItemProps {
 	onEditPrompt?: (content: string) => void
 }
 
-const ActionButton: React.FC<{
-	icon: React.ReactNode
-	label: string
-	onClick: () => void
-}> = ({ icon, label, onClick }) => (
-	<button
-		type="button"
-		onClick={onClick}
-		className="flex flex-col items-center gap-1 text-[var(--jarvis-muted)] hover:text-[var(--jarvis-text)] transition-colors min-w-[3rem]"
-	>
-		{icon}
-		<span className="text-[10px] font-medium">{label}</span>
-	</button>
-)
+function MessageActions({
+	contentRef,
+	text,
+	className,
+	onEdit,
+	onListen,
+	isSpeaking,
+}: {
+	contentRef: React.RefObject<HTMLElement | null>
+	text: string
+	className?: string
+	onEdit?: () => void
+	onListen?: () => void
+	isSpeaking?: boolean
+}) {
+	const [copied, setCopied] = useState(false)
+
+	const handleCopy = async () => {
+		try {
+			await navigator.clipboard.writeText(text)
+			setCopied(true)
+			setTimeout(() => setCopied(false), 2000)
+		} catch {
+			// Clipboard may fail in insecure contexts
+		}
+	}
+
+	const handleSelectAll = () => {
+		const element = contentRef.current
+		if (!element) return
+		const range = document.createRange()
+		range.selectNodeContents(element)
+		const selection = window.getSelection()
+		selection?.removeAllRanges()
+		selection?.addRange(range)
+		element.focus({ preventScroll: true })
+	}
+
+	return (
+		<div className={cn('flex items-center gap-1', className)}>
+			{onEdit ? (
+				<button
+					type="button"
+					onClick={onEdit}
+					className="btn-ghost flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs"
+				>
+					<Pencil className="h-3.5 w-3.5" />
+					Edit
+				</button>
+			) : null}
+			{onListen ? (
+				<button
+					type="button"
+					onClick={onListen}
+					className={cn(
+						'btn-ghost flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs',
+						isSpeaking && 'text-primary',
+					)}
+				>
+					{isSpeaking ? (
+						<Square className="h-3.5 w-3.5" />
+					) : (
+						<Volume2 className="h-3.5 w-3.5" />
+					)}
+					Listen
+				</button>
+			) : null}
+			<button
+				type="button"
+				onClick={handleCopy}
+				className="btn-ghost flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs"
+			>
+				{copied ? (
+					<Check className="h-3.5 w-3.5 text-emerald-400" />
+				) : (
+					<Copy className="h-3.5 w-3.5" />
+				)}
+				Copy
+			</button>
+			<button
+				type="button"
+				onClick={handleSelectAll}
+				className="btn-ghost flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs"
+			>
+				<TextSelect className="h-3.5 w-3.5" />
+				Select
+			</button>
+		</div>
+	)
+}
+
+function MessageAvatar({ isUser }: { isUser: boolean }) {
+	return (
+		<div
+			className={cn(
+				'mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full',
+				isUser
+					? 'bg-secondary text-secondary-foreground ring-1 ring-border'
+					: 'bg-primary/15 text-primary',
+			)}
+			aria-hidden
+		>
+			{isUser ? (
+				<User className="h-4 w-4" />
+			) : (
+				<Bot className="h-4 w-4" />
+			)}
+		</div>
+	)
+}
 
 export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
 	message,
@@ -50,20 +148,15 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
 	isStreaming,
 	onEditPrompt,
 }) => {
-	const [copiedText, setCopiedText] = useState(false)
 	const [showThinking, setShowThinking] = useState(true)
 	const [isEditing, setIsEditing] = useState(false)
 	const [editedContent, setEditedContent] = useState(message.content)
 	const [isSpeaking, setIsSpeaking] = useState(false)
+	const contentRef = useRef<HTMLDivElement>(null)
 
 	const isUser = message.role === 'user'
 	const timestamp = formatMessageTimestamp(message.timestamp)
-
-	const handleCopyMessage = () => {
-		navigator.clipboard.writeText(message.content)
-		setCopiedText(true)
-		setTimeout(() => setCopiedText(false), 2000)
-	}
+	const showStreaming = isStreaming && isLast && !isUser
 
 	const handleListen = () => {
 		if (isSpeaking) {
@@ -77,17 +170,6 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
 		window.speechSynthesis.speak(utterance)
 	}
 
-	const handleSelect = () => {
-		const selection = window.getSelection()
-		const el = document.getElementById(`msg-content-${message.id}`)
-		if (selection && el) {
-			const range = document.createRange()
-			range.selectNodeContents(el)
-			selection.removeAllRanges()
-			selection.addRange(range)
-		}
-	}
-
 	const handleSaveEdit = () => {
 		if (editedContent.trim() && onEditPrompt) {
 			onEditPrompt(editedContent.trim())
@@ -95,172 +177,194 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
 		}
 	}
 
-	if (isUser) {
-		return (
-			<div className="px-4 py-5">
-				<div className="flex items-center justify-end gap-2 mb-2">
-					<span className="text-xs text-[var(--jarvis-muted)]">You {timestamp}</span>
-					<div className="w-9 h-9 rounded-full bg-[var(--jarvis-surface)] border border-[var(--jarvis-border)] flex items-center justify-center shrink-0">
-						<User className="w-4 h-4 text-[var(--jarvis-muted)]" strokeWidth={1.75} />
-					</div>
-				</div>
-
-				{isEditing ? (
-					<div className="ml-auto max-w-[90%] space-y-2">
-						<textarea
-							value={editedContent}
-							onChange={(e) => setEditedContent(e.target.value)}
-							className="w-full p-3 rounded-2xl bg-[var(--jarvis-surface)] border border-[var(--jarvis-accent)] text-[var(--jarvis-text)] text-sm resize-none"
-							rows={3}
-						/>
-						<div className="flex justify-end gap-2">
-							<button type="button" onClick={() => setIsEditing(false)} className="text-xs text-[var(--jarvis-muted)] px-3 py-1">
-								Cancel
-							</button>
-							<button type="button" onClick={handleSaveEdit} className="text-xs text-white bg-[var(--jarvis-accent)] px-3 py-1 rounded-lg">
-								Save
-							</button>
-						</div>
-					</div>
-				) : (
-					<div className="ml-auto max-w-[90%] rounded-2xl px-4 py-3 bg-[var(--jarvis-bubble)] text-[var(--jarvis-text)] text-sm leading-relaxed">
-						<p className="whitespace-pre-wrap break-words">{message.content}</p>
-					</div>
-				)}
-
-				{message.fileAttachments && message.fileAttachments.length > 0 && (
-					<div className="flex flex-wrap gap-2 justify-end mt-2 max-w-[90%] ml-auto">
-						{message.fileAttachments.map((file, idx) => (
-							<div key={idx}>
-								{file.kind === 'image' ? (
-									<img src={imageAttachmentToDataUrl(file)} alt={file.name} className="max-h-32 rounded-xl" />
-								) : (
-									<div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[var(--jarvis-surface)] text-xs">
-										<FileCode className="w-3.5 h-3.5 text-[var(--jarvis-accent)]" />
-										<span>{file.name}</span>
-									</div>
-								)}
-							</div>
-						))}
-					</div>
-				)}
-
-				<div className="flex justify-end gap-4 mt-3 pr-1">
-					{onEditPrompt && (
-						<ActionButton
-							icon={<Edit2 className="w-4 h-4" strokeWidth={1.75} />}
-							label="Edit"
-							onClick={() => setIsEditing(true)}
-						/>
-					)}
-					<ActionButton
-						icon={copiedText ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" strokeWidth={1.75} />}
-						label="Copy"
-						onClick={handleCopyMessage}
-					/>
-					<ActionButton
-						icon={<List className="w-4 h-4" strokeWidth={1.75} />}
-						label="Select"
-						onClick={handleSelect}
-					/>
-				</div>
-			</div>
-		)
-	}
-
 	return (
-		<div className="px-4 py-5">
-			<div className="flex items-center gap-2 mb-2">
-				<div className="w-9 h-9 rounded-full bg-[var(--jarvis-accent)] flex items-center justify-center shrink-0">
-					<Bot className="w-4 h-4 text-white" strokeWidth={1.75} />
-				</div>
-				<span className="text-xs text-[var(--jarvis-muted)]">J.A.R.V.I.S {timestamp}</span>
-			</div>
-
-			{!message.content && !message.thinkingContent && isStreaming && isLast && (
-				<div className="flex items-center gap-2 text-xs text-[var(--jarvis-muted)] py-2">
-					<Loader2 className="w-4 h-4 animate-spin" />
-					<span>Thinking...</span>
-				</div>
+		<article
+			className={cn(
+				'min-w-0 max-w-full overflow-hidden border-b border-border/40 py-5 last:border-b-0',
+				isUser ? 'flex justify-end' : 'flex justify-start',
 			)}
+		>
+			<div
+				className={cn(
+					'flex min-w-0 max-w-full gap-3 md:gap-4',
+					isUser ? 'w-full max-w-[88%] flex-row-reverse' : 'w-full',
+				)}
+			>
+				<MessageAvatar isUser={isUser} />
 
-			{message.thinkingContent && (
-				<div className="mb-3 rounded-xl border border-[var(--jarvis-border)] bg-[var(--jarvis-surface)] overflow-hidden text-xs">
-					<button
-						type="button"
-						onClick={() => setShowThinking(!showThinking)}
-						className="w-full flex items-center justify-between px-3 py-2 text-[var(--jarvis-muted)]"
+				<div className={cn('min-w-0 flex-1', isUser && 'flex flex-col items-end')}>
+					<div
+						className={cn(
+							'mb-1.5 flex flex-wrap items-center gap-2',
+							isUser && 'justify-end',
+						)}
 					>
-						<div className="flex items-center gap-2">
-							<Brain className="w-3.5 h-3.5" />
-							<span>Thought Process</span>
-						</div>
-						{showThinking ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-					</button>
-					{showThinking && (
-						<div className="px-3 py-2 border-t border-[var(--jarvis-border)] text-[var(--jarvis-muted)] font-mono text-[10px] whitespace-pre-wrap max-h-48 overflow-y-auto">
-							{message.thinkingContent}
-						</div>
-					)}
-				</div>
-			)}
+						<p className="text-xs font-medium text-muted-foreground">
+							{isUser ? 'You' : 'J.A.R.V.I.S'}
+						</p>
+						<span className="text-xs text-muted-foreground/80">
+							{showStreaming ? 'Now' : timestamp}
+						</span>
+					</div>
 
-			{message.content && (
-				<div
-					id={`msg-content-${message.id}`}
-					className="prose prose-invert jarvis-prose max-w-full text-[var(--jarvis-text)] text-sm leading-relaxed"
-				>
-					<ReactMarkdown
-						remarkPlugins={[remarkGfm]}
-						components={{
-							table: ({ children }) => (
-								<div className="markdown-table-scroll">
-									<table>{children}</table>
+					{message.thinkingContent && !isUser ? (
+						<div className="mb-3 w-full overflow-hidden rounded-xl border border-border surface-panel text-xs">
+							<button
+								type="button"
+								onClick={() => setShowThinking(!showThinking)}
+								className="flex w-full items-center justify-between px-3 py-2 text-muted-foreground"
+							>
+								<div className="flex items-center gap-2">
+									<Brain className="h-3.5 w-3.5" />
+									<span>Thought Process</span>
 								</div>
-							),
-							code({ className, children, ...props }) {
-								const match = /language-(\w+)/.exec(className || '')
-								if (!match && !String(children).includes('\n')) {
-									return (
-										<code className="px-1 py-0.5 rounded bg-[var(--jarvis-surface)] text-[var(--jarvis-accent)] font-mono text-xs" {...props}>
-											{children}
-										</code>
-									)
-								}
-								return (
-									<pre className="rounded-xl bg-[var(--jarvis-surface)] p-3 overflow-x-auto text-xs">
-										<code className={className}>{children}</code>
-									</pre>
-								)
-							},
-						}}
+								{showThinking ? (
+									<ChevronDown className="h-3.5 w-3.5" />
+								) : (
+									<ChevronRight className="h-3.5 w-3.5" />
+								)}
+							</button>
+							{showThinking ? (
+								<div className="max-h-48 overflow-y-auto border-t border-border px-3 py-2 font-mono text-[10px] whitespace-pre-wrap text-muted-foreground">
+									{message.thinkingContent}
+								</div>
+							) : null}
+						</div>
+					) : null}
+
+					<div
+						className={cn(
+							'min-w-0 max-w-full overflow-hidden',
+							isUser &&
+								'rounded-[1.25rem] bg-secondary px-4 py-3 ring-1 ring-border/60',
+							isUser && isEditing && 'ring-2 ring-primary/50',
+						)}
 					>
-						{message.content}
-					</ReactMarkdown>
+						{isEditing ? (
+							<div className="space-y-2">
+								<textarea
+									value={editedContent}
+									onChange={(e) => setEditedContent(e.target.value)}
+									className="surface-input w-full resize-none rounded-xl p-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring"
+									rows={3}
+								/>
+								<div className="flex justify-end gap-2">
+									<button
+										type="button"
+										onClick={() => setIsEditing(false)}
+										className="text-xs text-muted-foreground px-3 py-1"
+									>
+										Cancel
+									</button>
+									<button
+										type="button"
+										onClick={handleSaveEdit}
+										className="btn-primary rounded-lg px-3 py-1 text-xs font-medium"
+									>
+										Save
+									</button>
+								</div>
+							</div>
+						) : (
+							<div
+								ref={contentRef}
+								tabIndex={-1}
+								className={cn(
+									'chat-message-content outline-none',
+									isUser
+										? 'text-sm leading-relaxed whitespace-pre-wrap'
+										: 'chat-markdown text-[0.9375rem] leading-7',
+								)}
+							>
+								{isUser ? (
+									<>
+										<p className="whitespace-pre-wrap break-words">{message.content}</p>
+										{message.fileAttachments && message.fileAttachments.length > 0 ? (
+											<div className="mt-3 flex flex-wrap gap-2">
+												{message.fileAttachments.map((file, idx) => (
+													<div key={idx}>
+														{file.kind === 'image' ? (
+															<img
+																src={imageAttachmentToDataUrl(file)}
+																alt={file.name}
+																className="max-h-32 rounded-xl"
+															/>
+														) : (
+															<div className="inline-flex items-center gap-2 rounded-xl bg-card px-3 py-1.5 text-xs ring-1 ring-border">
+																<FileCode className="h-3.5 w-3.5 text-primary" />
+																<span>{file.name}</span>
+															</div>
+														)}
+													</div>
+												))}
+											</div>
+										) : null}
+									</>
+								) : !message.content && showStreaming ? (
+									<span className="inline-flex items-center gap-2 text-muted-foreground">
+										<Loader2 className="h-4 w-4 animate-spin" />
+										Thinking…
+									</span>
+								) : message.content ? (
+									<ReactMarkdown
+										remarkPlugins={[remarkGfm]}
+										components={{
+											table: ({ children }) => (
+												<div className="markdown-table-scroll">
+													<table>{children}</table>
+												</div>
+											),
+											code({ className, children, ...props }) {
+												const match = /language-(\w+)/.exec(className || '')
+												if (!match && !String(children).includes('\n')) {
+													return (
+														<code className={className} {...props}>
+															{children}
+														</code>
+													)
+												}
+												return (
+													<div className="chat-code-block">
+														<pre>
+															<code className={className}>{children}</code>
+														</pre>
+													</div>
+												)
+											},
+										}}
+									>
+										{message.content}
+									</ReactMarkdown>
+								) : null}
+
+								{showStreaming && message.content ? (
+									<span
+										className="ml-0.5 inline-block h-4 w-1.5 animate-pulse rounded-sm bg-primary align-middle"
+									/>
+								) : null}
+							</div>
+						)}
+					</div>
+
+					{!showStreaming && !isEditing ? (
+						<MessageActions
+							contentRef={contentRef}
+							text={message.content}
+							className={cn('mt-2', isUser && 'justify-end')}
+							onEdit={
+								isUser && onEditPrompt
+									? () => {
+											setIsEditing(true)
+											setEditedContent(message.content)
+										}
+									: undefined
+							}
+							onListen={!isUser && message.content.trim() ? handleListen : undefined}
+							isSpeaking={isSpeaking}
+						/>
+					) : null}
 				</div>
-			)}
-
-			{isStreaming && isLast && message.content && (
-				<span className="inline-block w-1.5 h-4 ml-0.5 bg-[var(--jarvis-accent)] animate-pulse rounded-sm align-middle" />
-			)}
-
-			<div className="flex gap-4 mt-4">
-				<ActionButton
-					icon={<Volume2 className={`w-4 h-4 ${isSpeaking ? 'text-[var(--jarvis-accent)]' : ''}`} strokeWidth={1.75} />}
-					label="Listen"
-					onClick={handleListen}
-				/>
-				<ActionButton
-					icon={copiedText ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" strokeWidth={1.75} />}
-					label="Copy"
-					onClick={handleCopyMessage}
-				/>
-				<ActionButton
-					icon={<List className="w-4 h-4" strokeWidth={1.75} />}
-					label="Select"
-					onClick={handleSelect}
-				/>
 			</div>
-		</div>
+		</article>
 	)
 }

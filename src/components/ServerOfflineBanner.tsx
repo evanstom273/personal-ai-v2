@@ -11,27 +11,33 @@ export const ServerOfflineBanner: React.FC<ServerOfflineBannerProps> = ({
 	isRetrying = false,
 }) => {
 	return (
-		<div className="shrink-0 flex items-center justify-between gap-3 px-4 py-2.5 bg-rose-950/80 border-b border-rose-500/30 text-rose-100">
-			<div className="flex items-center gap-2 min-w-0">
-				<ServerCrash className="w-4 h-4 shrink-0 text-rose-400" />
+		<div
+			className="shrink-0 flex items-center justify-between gap-3 border-b border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm backdrop-blur-sm md:px-6"
+		>
+			<div className="flex min-w-0 items-center gap-2">
+				<ServerCrash className="h-4 w-4 shrink-0 text-destructive" />
 				<div className="min-w-0">
-					<p className="text-sm font-semibold">PersonalAI Server Offline</p>
-					<p className="text-[10px] text-rose-300/90 truncate">
+					<p className="font-semibold text-foreground">PersonalAI Server Offline</p>
+					<p className="truncate text-xs text-muted-foreground">
 						Start the backend on your laptop (pm2) and check Tailscale.
 					</p>
 				</div>
 			</div>
-			{onRetry && (
+			{onRetry ? (
 				<button
 					type="button"
 					onClick={onRetry}
 					disabled={isRetrying}
-					className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-500/20 border border-rose-500/40 text-xs font-semibold disabled:opacity-60"
+					className="shrink-0 inline-flex items-center gap-1.5 rounded-lg border border-destructive/30 bg-destructive/15 px-3 py-1.5 text-xs font-semibold text-destructive disabled:opacity-60"
 				>
-					<RefreshCw className={`w-3.5 h-3.5 ${isRetrying ? 'animate-spin' : ''}`} />
+					<RefreshCw className={cnIcon(isRetrying)} />
 					Retry
 				</button>
-			)}
+			) : null}
 		</div>
 	)
+}
+
+function cnIcon(spin: boolean): string {
+	return spin ? 'h-3.5 w-3.5 animate-spin' : 'h-3.5 w-3.5'
 }

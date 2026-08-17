@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import { Plus, Mic, ArrowUp, Square, X, FileText, Paperclip, Loader2 } from 'lucide-react'
 import type { FileAttachment, LocalModel, ChatSettings } from '../types/chat'
 import { readFileAsAttachment } from '../utils/fileAttachments'
+import { cn } from '../utils/cn'
 
 interface ChatInputProps {
 	onSendMessage: (text: string, files: FileAttachment[]) => void
@@ -31,8 +32,12 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
 	useEffect(() => {
 		if (textareaRef.current) {
-			textareaRef.current.style.height = 'auto'
-			textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`
+			textareaRef.current.style.height = '0px'
+			const maxHeight = 128
+			const nextHeight = Math.min(textareaRef.current.scrollHeight, maxHeight)
+			textareaRef.current.style.height = `${nextHeight}px`
+			textareaRef.current.style.overflowY =
+				textareaRef.current.scrollHeight > maxHeight ? 'auto' : 'hidden'
 		}
 	}, [input])
 
@@ -71,29 +76,40 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 	}
 
 	return (
-		<div className="shrink-0 px-3 pt-2 pb-2 bg-[var(--jarvis-bg)]">
-			{uploadError && (
-				<p className="text-[10px] text-rose-400 mb-2 px-1">{uploadError}</p>
-			)}
+		<form
+			onSubmit={(e) => {
+				e.preventDefault()
+				handleSubmit()
+			}}
+			className="chat-input-bar relative z-30 w-full max-w-full shrink-0 overflow-visible border-t border-border px-3 py-2.5 md:px-8 md:py-4"
+		>
+			{uploadError ? (
+				<p className="mx-auto mb-2 max-w-3xl text-xs text-destructive">{uploadError}</p>
+			) : null}
 
-			{attachments.length > 0 && (
-				<div className="flex flex-wrap gap-2 mb-2 px-1">
+			{attachments.length > 0 ? (
+				<div className="mx-auto mb-2 flex max-w-3xl flex-wrap gap-2">
 					{attachments.map((file, idx) => (
 						<div
 							key={idx}
-							className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--jarvis-surface)] text-xs text-[var(--jarvis-text)] border border-[var(--jarvis-border)]"
+							className="surface-panel flex items-center gap-2 rounded-full px-3 py-1.5 text-xs"
 						>
-							<FileText className="w-3.5 h-3.5 text-[var(--jarvis-accent)]" />
-							<span className="truncate max-w-[120px]">{file.name}</span>
-							<button type="button" onClick={() => setAttachments((p) => p.filter((_, i) => i !== idx))}>
-								<X className="w-3.5 h-3.5 text-[var(--jarvis-muted)]" />
+							<FileText className="h-3.5 w-3.5 text-primary shrink-0" />
+							<span className="max-w-[10rem] truncate">{file.name}</span>
+							<button
+								type="button"
+								className="text-muted-foreground hover:text-foreground"
+								onClick={() => setAttachments((p) => p.filter((_, i) => i !== idx))}
+								aria-label={`Remove ${file.name}`}
+							>
+								<X className="h-3.5 w-3.5" />
 							</button>
 						</div>
 					))}
 				</div>
-			)}
+			) : null}
 
-			<div className="flex items-center gap-2">
+			<div className="relative mx-auto w-full min-w-0 max-w-3xl">
 				<input
 					type="file"
 					ref={fileInputRef}
@@ -103,76 +119,84 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 					className="hidden"
 				/>
 
-				<button
-					type="button"
-					onClick={() => {
-						setMenuOpen((o) => !o)
-						if (!menuOpen) fileInputRef.current?.click()
-					}}
-					disabled={disabled || isReadingFiles}
-					className="w-10 h-10 shrink-0 rounded-full border border-[var(--jarvis-border)] bg-[var(--jarvis-surface)] flex items-center justify-center text-[var(--jarvis-muted)] hover:text-[var(--jarvis-text)] transition-colors disabled:opacity-40"
-					aria-label="Add attachment"
-				>
-					{isReadingFiles ? <Loader2 className="w-5 h-5 animate-spin" /> : <Plus className="w-5 h-5" strokeWidth={1.75} />}
-				</button>
+				<div className="surface-glass flex items-end gap-2 rounded-2xl p-2 shadow-sm border-border">
+					<button
+						type="button"
+						onClick={() => {
+							setMenuOpen((o) => !o)
+							if (!menuOpen) fileInputRef.current?.click()
+						}}
+						disabled={disabled || isReadingFiles}
+						className="btn-ghost flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border disabled:opacity-40"
+						aria-label="Add attachment"
+					>
+						{isReadingFiles ? (
+							<Loader2 className="h-4 w-4 animate-spin" />
+						) : (
+							<Plus className="h-4 w-4" />
+						)}
+					</button>
 
-				<button
-					type="button"
-					disabled={disabled}
-					className="w-10 h-10 shrink-0 rounded-full border border-[var(--jarvis-border)] bg-[var(--jarvis-surface)] flex items-center justify-center text-[var(--jarvis-muted)] hover:text-[var(--jarvis-text)] transition-colors disabled:opacity-40"
-					aria-label="Voice input"
-					title="Voice input (coming soon)"
-				>
-					<Mic className="w-5 h-5" strokeWidth={1.75} />
-				</button>
+					<button
+						type="button"
+						disabled={disabled}
+						className="btn-ghost flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border disabled:opacity-40"
+						aria-label="Voice input"
+						title="Voice input (coming soon)"
+					>
+						<Mic className="h-4 w-4" />
+					</button>
 
-				<div className="flex-1 min-w-0 rounded-2xl border border-[var(--jarvis-border)] bg-[var(--jarvis-surface)] px-4 py-2.5">
 					<textarea
 						ref={textareaRef}
 						value={input}
 						onChange={(e) => setInput(e.target.value)}
 						onKeyDown={handleKeyDown}
-						placeholder="Message..."
+						placeholder="Message…"
 						disabled={disabled || isReadingFiles}
 						rows={1}
-						className="w-full bg-transparent text-[var(--jarvis-text)] placeholder-[var(--jarvis-muted)] text-sm resize-none focus:outline-none max-h-28"
+						className="max-h-32 min-h-[40px] flex-1 resize-none overflow-hidden bg-transparent px-2 py-2 text-sm outline-none placeholder:text-muted-foreground disabled:opacity-60 md:min-h-[44px] md:px-3"
 					/>
-				</div>
 
-				{isStreaming ? (
-					<button
-						type="button"
-						onClick={onStopStreaming}
-						className="w-10 h-10 shrink-0 rounded-full bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-rose-400"
-						aria-label="Stop"
-					>
-						<Square className="w-4 h-4 fill-current" />
-					</button>
-				) : (
-					<button
-						type="button"
-						onClick={handleSubmit}
-						disabled={disabled || isReadingFiles || (!input.trim() && attachments.length === 0)}
-						className="w-10 h-10 shrink-0 rounded-full bg-[var(--jarvis-accent)] flex items-center justify-center text-white disabled:opacity-40 disabled:bg-[var(--jarvis-surface)] disabled:text-[var(--jarvis-muted)] transition-opacity"
-						aria-label="Send"
-					>
-						<ArrowUp className="w-5 h-5" strokeWidth={2} />
-					</button>
-				)}
+					{isStreaming ? (
+						<button
+							type="button"
+							onClick={onStopStreaming}
+							className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-secondary text-foreground"
+							aria-label="Stop"
+						>
+							<Square className="h-4 w-4" />
+						</button>
+					) : (
+						<button
+							type="submit"
+							disabled={
+								disabled || isReadingFiles || (!input.trim() && attachments.length === 0)
+							}
+							className={cn(
+								'btn-primary flex h-9 w-9 shrink-0 items-center justify-center rounded-md disabled:opacity-40',
+								'disabled:bg-secondary disabled:text-muted-foreground disabled:shadow-none',
+							)}
+							aria-label="Send message"
+						>
+							<ArrowUp className="h-4 w-4" />
+						</button>
+					)}
+				</div>
 			</div>
 
-			{menuOpen && (
-				<div className="mt-2 px-1">
+			{menuOpen ? (
+				<div className="mx-auto mt-2 max-w-3xl px-1">
 					<button
 						type="button"
 						onClick={() => fileInputRef.current?.click()}
-						className="flex items-center gap-2 text-xs text-[var(--jarvis-muted)] hover:text-[var(--jarvis-text)]"
+						className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground"
 					>
-						<Paperclip className="w-3.5 h-3.5" />
+						<Paperclip className="h-3.5 w-3.5" />
 						Attach file
 					</button>
 				</div>
-			)}
-		</div>
+			) : null}
+		</form>
 	)
 }

@@ -1,5 +1,6 @@
 import React from 'react'
 import { Bot } from 'lucide-react'
+import { cn } from '../utils/cn'
 
 interface HomeViewProps {
 	onStartChat: () => void
@@ -7,21 +8,28 @@ interface HomeViewProps {
 
 export const HomeView: React.FC<HomeViewProps> = ({ onStartChat }) => {
 	return (
-		<div className="flex-1 flex flex-col items-center justify-center px-6 py-8 text-center">
-			<div className="w-16 h-16 rounded-full bg-[var(--jarvis-accent)] flex items-center justify-center mb-6 shadow-lg shadow-[var(--jarvis-accent)]/20">
-				<Bot className="w-8 h-8 text-white" strokeWidth={1.75} />
+		<div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 py-6 md:px-8">
+			<div className="mx-auto flex max-w-md flex-col items-center text-center">
+				<div
+					className={cn(
+						'home-hero-icon mb-6 flex h-16 w-16 items-center justify-center rounded-full text-primary',
+					)}
+				>
+					<Bot className="h-8 w-8" strokeWidth={1.75} />
+				</div>
+				<h2 className="text-xl font-semibold tracking-tight">J.A.R.V.I.S</h2>
+				<p className="mt-2 text-sm text-muted-foreground max-w-sm leading-relaxed">
+					Your local AI assistant. Open Chat to start a conversation, or browse past sessions in
+					Library.
+				</p>
+				<button
+					type="button"
+					onClick={onStartChat}
+					className="btn-primary mt-6 rounded-full px-6 py-2.5 text-sm font-semibold transition-opacity hover:opacity-95"
+				>
+					Start chatting
+				</button>
 			</div>
-			<h2 className="text-xl font-bold text-[var(--jarvis-text)] mb-2">J.A.R.V.I.S</h2>
-			<p className="text-sm text-[var(--jarvis-muted)] max-w-sm leading-relaxed mb-6">
-				Your local AI assistant. Open Chat to start a conversation, or browse past sessions in Library.
-			</p>
-			<button
-				type="button"
-				onClick={onStartChat}
-				className="px-6 py-2.5 rounded-full bg-[var(--jarvis-accent)] text-white text-sm font-semibold hover:opacity-90 transition-opacity"
-			>
-				Start chatting
-			</button>
 		</div>
 	)
 }

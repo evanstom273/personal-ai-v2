@@ -13,6 +13,7 @@ import {
   Sliders,
 } from 'lucide-react'
 import type { ChatSession, LocalModel } from '../types/chat'
+import { cn } from '../utils/cn'
 
 interface SidebarProps {
   isOpen: boolean
@@ -100,18 +101,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <>
       {/* Mobile Backdrop Overlay */}
-      {isOpen && (
+      {isOpen ? (
         <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm xl:hidden"
           onClick={onClose}
+          aria-hidden
         />
-      )}
+      ) : null}
 
-      {/* Sidebar Container */}
       <aside
-        className={`fixed top-0 bottom-0 left-0 z-50 w-72 surface-glass border-r border-border/80 flex flex-col transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 ${
-          isOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        className={cn(
+          'fixed top-0 bottom-0 left-0 z-50 flex w-72 max-w-[min(18rem,88vw)] flex-col',
+          'surface-glass border-r border-border/80 transition-transform duration-300 ease-in-out',
+          'xl:static xl:z-auto xl:max-w-none xl:shrink-0',
+          isOpen ? 'translate-x-0' : '-translate-x-full',
+          !isOpen && 'xl:hidden',
+        )}
+        aria-hidden={!isOpen ? true : undefined}
       >
         {/* Top Header: App Branding */}
         <div className="p-4 flex items-center justify-between border-b border-border/60">
@@ -132,7 +138,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
           <button
             onClick={onClose}
-            className="btn-ghost rounded-lg p-1.5 lg:hidden"
+            className="btn-ghost rounded-lg p-1.5 xl:hidden"
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
@@ -143,7 +149,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <button
             onClick={() => {
               onNewChat()
-              if (window.innerWidth < 1024) onClose()
+              if (window.innerWidth < 1280) onClose()
             }}
             className="btn-primary w-full flex cursor-pointer items-center justify-between rounded-xl px-4 py-2.5 text-sm font-medium transition-all group"
           >
@@ -202,7 +208,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       key={session.id}
                       onClick={() => {
                         onSelectSession(session.id)
-                        if (window.innerWidth < 1024) onClose()
+                        if (window.innerWidth < 1280) onClose()
                       }}
                       className={`group relative flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium cursor-pointer transition-all ${
                         isActive

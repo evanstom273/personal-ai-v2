@@ -11,11 +11,12 @@ import {
 	Pencil,
 	Search,
 	Trash2,
+	Upload,
 } from 'lucide-react'
 import { DocumentTemplatePicker } from '@/components/documents/DocumentTemplatePicker'
 import type { DocumentTemplate } from '@/data/documentTemplates'
 import { useDualPaneNavigation } from '@/hooks/useDualPaneNavigation'
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import {
@@ -35,6 +36,7 @@ import {
 	renameLibraryMediaItem,
 } from '@/services/library/libraryMediaService'
 import { updateDocument } from '@/services/documents/documentService'
+import { uploadDocumentsFromFiles } from '@/services/documents/documentUploadService'
 import type { LibraryMediaKind, LibraryMediaRecord } from '@/storage/types'
 import { formatTimestamp } from '@/utils/documentContent'
 import {
@@ -213,6 +215,9 @@ function DocumentsSection({ query }: { query: string }) {
 	const [renamingId, setRenamingId] = useState<string | null>(null)
 	const [renameValue, setRenameValue] = useState('')
 	const [templatePickerOpen, setTemplatePickerOpen] = useState(false)
+	const [uploadError, setUploadError] = useState<string | null>(null)
+	const [isUploading, setIsUploading] = useState(false)
+	const uploadInputRef = useRef<HTMLInputElement>(null)
 
 	const filteredDocuments = useMemo(() => {
 		const normalized = query.trim().toLowerCase()
@@ -234,6 +239,30 @@ function DocumentsSection({ query }: { query: string }) {
 		openDocument(document.id)
 	}
 
+	async function handleUpload(files: File[]): Promise<void> {
+		if (files.length === 0) {
+			return
+		}
+
+		setUploadError(null)
+		setIsUploading(true)
+
+		try {
+			const { documents, errors } = await uploadDocumentsFromFiles(files)
+			await refreshDocuments()
+
+			if (documents.length === 1) {
+				openDocument(documents[0].id)
+			}
+
+			if (errors.length > 0) {
+				setUploadError(errors.join(' '))
+			}
+		} finally {
+			setIsUploading(false)
+		}
+	}
+
 	async function handleRename(documentId: string): Promise<void> {
 		const trimmed = renameValue.trim()
 		if (!trimmed) {
@@ -248,18 +277,46 @@ function DocumentsSection({ query }: { query: string }) {
 
 	return (
 		<div className="space-y-4">
+			<input
+				ref={uploadInputRef}
+				type="file"
+				multiple
+				accept=".txt,.md,.markdown,.html,.htm,.json,.csv,.xml,.yml,.yaml,.pdf,.docx,text/*,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+				className="hidden"
+				onChange={(event) => {
+					const files = Array.from(event.target.files ?? [])
+					if (files.length > 0) {
+						void handleUpload(files)
+					}
+					event.target.value = ''
+				}}
+			/>
+
 			<DocumentTemplatePicker
 				open={templatePickerOpen}
 				onOpenChange={setTemplatePickerOpen}
 				onSelect={(template) => void handleTemplateSelect(template)}
 			/>
 
-			<div className="flex justify-end">
+			<div className="flex flex-wrap justify-end gap-2">
+				<Button
+					type="button"
+					variant="outline"
+					disabled={isUploading}
+					onClick={() => uploadInputRef.current?.click()}
+				>
+					<Upload className="h-4 w-4" />
+					{isUploading ? 'Uploading…' : 'Upload files'}
+				</Button>
 				<Button onClick={() => void handleCreate()}>
 					<FilePlus2 className="h-4 w-4" />
 					New document
 				</Button>
 			</div>
+
+			{uploadError ? (
+				<p className="text-sm text-destructive">{uploadError}</p>
+			) : null}
 
 			{isLoading ? (
 				<p className="text-sm text-muted-foreground">Loading documents…</p>
@@ -268,7 +325,7 @@ function DocumentsSection({ query }: { query: string }) {
 					message={
 						query.trim()
 							? 'No documents match your search.'
-							: 'No documents yet. Create one or upload via + in chat.'
+							: 'No documents yet. Upload files or create a new document.'
 					}
 				/>
 			) : (

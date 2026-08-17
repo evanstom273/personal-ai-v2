@@ -16,18 +16,12 @@ import { Button } from '@/components/ui/button'
 import { useDocumentMentionPicker } from '@/hooks/useDocumentMentionPicker'
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition'
 import { insertDocumentMention, buildDocumentMention } from '@/utils/documentMentions'
-import { createDocument } from '@/services/documents/documentService'
-import {
-	ingestUploadedDocumentContent,
-} from '@/utils/documentContent'
+import { uploadDocumentsFromFiles } from '@/services/documents/documentUploadService'
 import type { ChatAttachment, ChatInputMethod, ChatSubmitPayload } from '@/types/chat'
 import type { StoredMessage } from '@/storage/types'
 import {
-	getFileBaseName,
 	isImageFile,
-	isUploadableDocumentFile,
 	readFileAsDataUrl,
-	readUploadableDocumentContent,
 } from '@/utils/fileAttachments'
 import { cn } from '@/utils/cn'
 
@@ -278,48 +272,15 @@ export function ChatInput({
 			return
 		}
 
-		const results = await Promise.allSettled(
-			files.map(async (file) => {
-				if (!isUploadableDocumentFile(file)) {
-					throw new Error(
-						`${file.name} is not a supported document (.txt, .md, .html, .pdf, etc.).`,
-					)
-				}
+		const { documents, errors } = await uploadDocumentsFromFiles(files)
 
-				const raw = await readUploadableDocumentContent(file)
-				const { content, contentFormat } = ingestUploadedDocumentContent(file, raw)
-				const title = getFileBaseName(file.name) || 'Uploaded document'
-				const document = await createDocument(title, content, {
-					source: 'upload',
-					contentFormat,
-				})
-
-				return {
-					id: crypto.randomUUID(),
-					type: 'document' as const,
-					name: document.title,
-					documentId: document.id,
-				}
-			}),
-		)
-
-		const nextAttachments: ChatAttachment[] = []
-		const errors: string[] = []
-
-		for (const result of results) {
-			if (result.status === 'fulfilled') {
-				nextAttachments.push(result.value)
-				continue
-			}
-
-			errors.push(
-				result.reason instanceof Error
-					? result.reason.message
-					: 'Could not upload one of the documents.',
-			)
-		}
-
-		if (nextAttachments.length > 0) {
+		if (documents.length > 0) {
+			const nextAttachments: ChatAttachment[] = documents.map((document) => ({
+				id: crypto.randomUUID(),
+				type: 'document' as const,
+				name: document.title,
+				documentId: document.id,
+			}))
 			setAttachments((current) => [...current, ...nextAttachments])
 		}
 

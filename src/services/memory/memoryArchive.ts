@@ -4,7 +4,7 @@ import {
 	resolveEconomyModelId,
 } from '@/services/gemini/constants'
 import { applySafetySettingsToRequestBody } from '@/services/gemini/safetySettings'
-import { getConfiguredUserName } from '@/services/gemini/systemInstruction'
+import { getConfiguredAiName, getConfiguredUserName } from '@/services/gemini/systemInstruction'
 import {
 	addMemoryEntries,
 	isMemoryCategory,
@@ -34,10 +34,16 @@ interface GenerateContentResponse {
 let archiveInProgress = false
 let archiveQueued = false
 
-function formatMessagesForArchive(messages: StoredMessage[]): string {
+function formatMessagesForArchive(
+	messages: StoredMessage[],
+	preferences: UserPreferences,
+): string {
+	const userName = getConfiguredUserName(preferences)
+	const aiName = getConfiguredAiName(preferences)
+
 	return messages
 		.map((message) => {
-			const speaker = message.role === 'user' ? 'User' : 'Assistant'
+			const speaker = message.role === 'user' ? userName : aiName
 			return `[${formatMessageDateTime(message.createdAt)}] ${speaker}: ${message.content.trim()}`
 		})
 		.join('\n\n')
@@ -99,7 +105,7 @@ async function extractMemoryFromBatch(
 			: 'None yet.'
 
 	const prompt = [
-		'You are a memory archivist for a personal AI assistant.',
+		`You are a memory archivist for ${getConfiguredAiName(preferences)}.`,
 		`The user's name is ${userName}.`,
 		'Read the conversation segment below and extract durable facts worth remembering long-term.',
 		'Focus on preferences, identity, ongoing projects, decisions, constraints, and recurring context.',
@@ -111,7 +117,7 @@ async function extractMemoryFromBatch(
 		existingSummary,
 		'',
 		'Conversation segment:',
-		formatMessagesForArchive(messages),
+		formatMessagesForArchive(messages, preferences),
 	].join('\n')
 
 	const response = await geminiFetch<GenerateContentResponse>(

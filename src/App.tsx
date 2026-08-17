@@ -516,7 +516,10 @@ function App() {
         isOpen={settingsOpen}
         onClose={() => setSettingsOpen(false)}
         settings={settings}
-        onSaveSettings={(newSettings) => setSettings(newSettings)}
+        onSaveSettings={(newSettings) => {
+          setSettings(newSettings)
+          localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(newSettings))
+        }}
         onModelsRefresh={(fetchedModels) => {
           setModels(fetchedModels)
           if (

@@ -88,11 +88,32 @@
   margin-bottom: 0.8em;
 }
 
-.prose table {
-  width: 100%;
-  border-collapse: collapse;
+.prose {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.prose pre {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.prose .markdown-table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   margin-top: 1em;
   margin-bottom: 1em;
+  border-radius: 0.5rem;
+  border: 1px solid #334155;
+}
+
+.prose table {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: collapse;
+  margin: 0;
 }
 
 .prose th, .prose td {

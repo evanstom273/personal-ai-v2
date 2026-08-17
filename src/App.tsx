@@ -687,7 +687,7 @@ function App() {
 
   return (
     <div
-      className={`h-dvh min-h-dvh flex overflow-hidden bg-slate-950 text-slate-100 font-sans selection:bg-cyan-500/30 selection:text-cyan-200 ${
+      className={`app-shell flex overflow-hidden selection:bg-primary/30 selection:text-primary-foreground ${
         settings.theme === 'light' ? 'theme-light' : ''
       }`}
     >
@@ -734,9 +734,9 @@ function App() {
           hasMessages={messages.length > 0}
         />
 
-        <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-800 flex flex-col">
+        <div className="flex-1 min-h-0 overflow-y-auto flex flex-col">
           {serverChecking ? (
-            <div className="flex-1 flex items-center justify-center text-slate-400 text-sm">
+            <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
               Connecting to PersonalAI server...
             </div>
           ) : messages.length === 0 ? (
@@ -748,7 +748,7 @@ function App() {
               }}
             />
           ) : (
-            <div className="flex-1 pb-4">
+            <div className="mx-auto box-border w-full min-w-0 max-w-3xl px-4 py-2 md:px-6">
               {messages.map((msg, idx) => (
                 <ChatMessageItem
                   key={msg.id}

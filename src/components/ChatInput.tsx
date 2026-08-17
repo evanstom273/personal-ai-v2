@@ -1,8 +1,21 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { Send, Square, X, FileText, Plus, Paperclip, Sparkles, Brain, Zap, ChevronRight, Loader2 } from 'lucide-react'
+import {
+	Send,
+	Square,
+	X,
+	FileText,
+	Plus,
+	Paperclip,
+	Sparkles,
+	Brain,
+	Zap,
+	ChevronRight,
+	Loader2,
+} from 'lucide-react'
 import type { FileAttachment, LocalModel, ChatSettings } from '../types/chat'
 import { ModelPickerList } from './ModelPicker'
 import { readFileAsAttachment } from '../utils/fileAttachments'
+import { cn } from '../utils/cn'
 
 type MenuView = 'main' | 'models'
 
@@ -43,8 +56,12 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
 	useEffect(() => {
 		if (textareaRef.current) {
-			textareaRef.current.style.height = 'auto'
-			textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 200)}px`
+			textareaRef.current.style.height = '0px'
+			const maxHeight = 200
+			const nextHeight = Math.min(textareaRef.current.scrollHeight, maxHeight)
+			textareaRef.current.style.height = `${nextHeight}px`
+			textareaRef.current.style.overflowY =
+				textareaRef.current.scrollHeight > maxHeight ? 'auto' : 'hidden'
 		}
 	}, [input])
 
@@ -124,39 +141,45 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 		})
 	}
 
+	const canSend = !isReadingFiles && (input.trim() || attachments.length > 0)
+
 	return (
-		<div className="shrink-0 w-full border-t border-slate-800/70 bg-slate-950/95 backdrop-blur-xl pb-[env(safe-area-inset-bottom)]">
-			<div className="w-full max-w-3xl mx-auto px-3 pt-2 pb-3">
-				<div className="relative rounded-2xl bg-slate-900/90 border border-slate-800 focus-within:border-cyan-500/50 shadow-2xl shadow-black/80 transition-all">
-					{uploadError && (
-						<div className="px-3 pt-3 text-[9px] text-rose-300 bg-rose-500/10 border-b border-rose-500/20">
+		<div
+			className="chat-input-bar shrink-0 w-full border-t border-border pb-[max(0.5rem,env(safe-area-inset-bottom))]"
+		>
+			<div className="mx-auto w-full max-w-3xl px-3 pt-2 pb-3 md:px-8">
+				<div
+					className="surface-glass relative rounded-2xl transition-all focus-within:ring-1 focus-within:ring-primary/40"
+				>
+					{uploadError ? (
+						<div className="border-b border-destructive/20 bg-destructive/10 px-3 pt-3 text-[9px] text-destructive">
 							{uploadError}
 						</div>
-					)}
+					) : null}
 
-					{attachments.length > 0 && (
-						<div className="flex flex-wrap gap-2 p-3 pb-0 border-b border-slate-800/60">
+					{attachments.length > 0 ? (
+						<div className="flex flex-wrap gap-2 border-b border-border/60 p-3 pb-0">
 							{attachments.map((file, idx) => (
 								<div
 									key={idx}
-									className="inline-flex items-center gap-2 px-3 py-1 rounded-xl bg-slate-800 text-xs text-slate-200 border border-slate-700"
+									className="surface-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs"
 								>
-									<FileText className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-									<span className="font-medium max-w-[120px] truncate">{file.name}</span>
-									<span className="text-[8px] text-slate-400 shrink-0">
+									<FileText className="h-3.5 w-3.5 shrink-0 text-primary" />
+									<span className="max-w-[120px] truncate font-medium">{file.name}</span>
+									<span className="shrink-0 text-[8px] text-muted-foreground">
 										({Math.round(file.size / 1024)} KB)
 									</span>
 									<button
 										type="button"
 										onClick={() => removeAttachment(idx)}
-										className="p-0.5 text-slate-400 hover:text-rose-400 rounded transition-colors"
+										className="rounded p-0.5 text-muted-foreground transition-colors hover:text-destructive"
 									>
-										<X className="w-3.5 h-3.5" />
+										<X className="h-3.5 w-3.5" />
 									</button>
 								</div>
 							))}
 						</div>
-					)}
+					) : null}
 
 					<div className="flex items-end px-2 py-2 sm:px-3 sm:py-2.5">
 						<input
@@ -168,25 +191,29 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 							className="hidden"
 						/>
 
-						<div className="relative shrink-0 mb-0.5" ref={menuRef}>
+						<div className="relative mb-0.5 shrink-0" ref={menuRef}>
 							<button
 								type="button"
 								onClick={openMenu}
-								className={`p-2 rounded-xl transition-colors ${
-									menuOpen
-										? 'text-cyan-400 bg-slate-800'
-										: 'text-slate-400 hover:text-cyan-400 hover:bg-slate-800'
-								}`}
+								className={cn(
+									'btn-ghost rounded-xl p-2 transition-colors',
+									menuOpen && 'bg-accent text-primary',
+								)}
 								title="More options"
 								aria-expanded={menuOpen}
 								aria-haspopup="menu"
 							>
-								<Plus className={`w-5 h-5 transition-transform ${menuOpen ? 'rotate-45' : ''}`} />
+								<Plus
+									className={cn(
+										'h-5 w-5 transition-transform',
+										menuOpen && 'rotate-45',
+									)}
+								/>
 							</button>
 
-							{menuOpen && (
+							{menuOpen ? (
 								<div
-									className="absolute left-0 bottom-full mb-2 w-[min(100vw-1.5rem,18rem)] rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl shadow-black/80 z-50 overflow-hidden"
+									className="surface-popover absolute bottom-full left-0 z-50 mb-2 w-[min(100vw-1.5rem,18rem)] overflow-hidden rounded-2xl"
 									role="menu"
 								>
 									{menuView === 'main' ? (
@@ -196,12 +223,12 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 												role="menuitem"
 												onClick={() => fileInputRef.current?.click()}
 												disabled={isReadingFiles}
-												className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-slate-200 hover:bg-slate-800/70 transition-colors disabled:opacity-60"
+												className="flex w-full items-center gap-3 px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-accent disabled:opacity-60"
 											>
 												{isReadingFiles ? (
-													<Loader2 className="w-4 h-4 text-slate-400 animate-spin" />
+													<Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
 												) : (
-													<Paperclip className="w-4 h-4 text-slate-400" />
+													<Paperclip className="h-4 w-4 text-muted-foreground" />
 												)}
 												<span>Attach file</span>
 											</button>
@@ -210,14 +237,14 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 												type="button"
 												role="menuitem"
 												onClick={() => setMenuView('models')}
-												className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-slate-200 hover:bg-slate-800/70 transition-colors"
+												className="flex w-full items-center gap-3 px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-accent"
 											>
-												<Sparkles className="w-4 h-4 text-cyan-400" />
-												<div className="flex-1 min-w-0 text-left">
-													<span className="block text-slate-400 text-[9px]">Model</span>
-													<span className="font-medium truncate">{selectedModel}</span>
+												<Sparkles className="h-4 w-4 text-primary" />
+												<div className="min-w-0 flex-1 text-left">
+													<span className="block text-[9px] text-muted-foreground">Model</span>
+													<span className="truncate font-medium">{selectedModel}</span>
 												</div>
-												<ChevronRight className="w-4 h-4 text-slate-500 shrink-0" />
+												<ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
 											</button>
 
 											<button
@@ -226,25 +253,28 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 												onClick={() =>
 													onUpdateSettings({ enableThinking: !settings.enableThinking })
 												}
-												className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-slate-200 hover:bg-slate-800/70 transition-colors"
+												className="flex w-full items-center gap-3 px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-accent"
 											>
 												{settings.enableThinking ? (
-													<Brain className="w-4 h-4 text-purple-400" />
+													<Brain className="h-4 w-4 text-purple-400" />
 												) : (
-													<Zap className="w-4 h-4 text-amber-400" />
+													<Zap className="h-4 w-4 text-amber-400" />
 												)}
 												<div className="flex-1 text-left">
-													<span className="block text-slate-400 text-[9px]">Reasoning</span>
+													<span className="block text-[9px] text-muted-foreground">
+														Reasoning
+													</span>
 													<span className="font-medium">
 														{settings.enableThinking ? 'Thinking mode' : 'Fast mode'}
 													</span>
 												</div>
 												<span
-													className={`text-[8px] font-semibold px-2 py-0.5 rounded-full border ${
+													className={cn(
+														'rounded-full border px-2 py-0.5 text-[8px] font-semibold',
 														settings.enableThinking
-															? 'text-purple-300 border-purple-500/30 bg-purple-500/10'
-															: 'text-amber-300 border-amber-500/30 bg-amber-500/10'
-													}`}
+															? 'border-purple-500/30 bg-purple-500/10 text-purple-300'
+															: 'border-amber-500/30 bg-amber-500/10 text-amber-300',
+													)}
 												>
 													{settings.enableThinking ? 'ON' : 'OFF'}
 												</span>
@@ -262,7 +292,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 										/>
 									)}
 								</div>
-							)}
+							) : null}
 						</div>
 
 						<textarea
@@ -273,58 +303,57 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 							placeholder={`Message ${selectedModel}...`}
 							disabled={disabled || isReadingFiles}
 							rows={1}
-							className="w-full min-w-0 bg-transparent border-0 text-slate-100 placeholder-slate-400 text-sm focus:outline-none focus:ring-0 resize-none px-2 py-1 max-h-48 scrollbar-thin scrollbar-thumb-slate-800"
+							className="max-h-48 w-full min-w-0 resize-none border-0 bg-transparent px-2 py-1 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-0"
 						/>
 
-						<div className="shrink-0 mb-0.5 ml-1">
+						<div className="mb-0.5 ml-1 shrink-0">
 							{isStreaming ? (
 								<button
 									type="button"
 									onClick={onStopStreaming}
-									className="p-2.5 rounded-xl bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 border border-rose-500/40 transition-all flex items-center justify-center cursor-pointer"
+									className="flex cursor-pointer items-center justify-center rounded-xl border border-rose-500/40 bg-rose-500/20 p-2.5 text-rose-400 transition-all hover:bg-rose-500/30"
 									title="Stop generation"
 								>
-									<Square className="w-4 h-4 fill-rose-400" />
+									<Square className="h-4 w-4 fill-rose-400" />
 								</button>
 							) : (
 								<button
 									type="button"
 									onClick={handleSubmit}
-									disabled={
-										isReadingFiles || (!input.trim() && attachments.length === 0)
-									}
-									className={`p-2.5 rounded-xl transition-all flex items-center justify-center cursor-pointer ${
-										!isReadingFiles && (input.trim() || attachments.length > 0)
-											? 'bg-gradient-to-tr from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white shadow-md shadow-cyan-500/25 active:scale-95'
-											: 'bg-slate-800 text-slate-500 cursor-not-allowed'
-									}`}
+									disabled={!canSend}
+									className={cn(
+										'flex cursor-pointer items-center justify-center rounded-xl p-2.5 transition-all',
+										canSend
+											? 'btn-primary active:scale-95'
+											: 'cursor-not-allowed bg-secondary text-muted-foreground',
+									)}
 									title="Send message (Enter)"
 								>
 									{isReadingFiles ? (
-										<Loader2 className="w-4 h-4 animate-spin" />
+										<Loader2 className="h-4 w-4 animate-spin" />
 									) : (
-										<Send className="w-4 h-4" />
+										<Send className="h-4 w-4" />
 									)}
 								</button>
 							)}
 						</div>
 					</div>
 
-					<div className="px-3 py-1 border-t border-slate-800/40 flex items-center justify-between text-[8px] sm:text-[9px] text-slate-500">
-						<div className="flex items-center gap-1.5 min-w-0">
-							<Sparkles className="w-3 h-3 text-cyan-400 shrink-0" />
+					<div className="flex items-center justify-between border-t border-border/40 px-3 py-1 text-[8px] text-muted-foreground sm:text-[9px]">
+						<div className="flex min-w-0 items-center gap-1.5">
+							<Sparkles className="h-3 w-3 shrink-0 text-primary" />
 							<span className="truncate">
 								{activeModel?.details?.parameter_size
 									? `${selectedModel} · ${activeModel.details.parameter_size}`
 									: selectedModel}
 							</span>
 							{settings.enableThinking ? (
-								<span className="hidden sm:inline text-purple-400/80">· thinking</span>
+								<span className="hidden text-purple-400/80 sm:inline">· thinking</span>
 							) : (
-								<span className="hidden sm:inline text-amber-400/80">· fast</span>
+								<span className="hidden text-amber-400/80 sm:inline">· fast</span>
 							)}
 						</div>
-						<span className="hidden sm:inline shrink-0">Shift+Enter for newline</span>
+						<span className="hidden shrink-0 sm:inline">Shift+Enter for newline</span>
 					</div>
 				</div>
 			</div>

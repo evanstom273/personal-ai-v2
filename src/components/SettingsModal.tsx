@@ -192,17 +192,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 	const appOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://your-app-url'
 
 	return (
-		<div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
-			<div className="relative w-full max-w-xl rounded-2xl bg-slate-950 border border-slate-800 shadow-2xl shadow-black overflow-hidden flex flex-col max-h-[90vh]">
-				<div className="flex items-center justify-between p-4 border-b border-slate-800 bg-slate-900/60">
+		<div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+			<div className="surface-popover relative flex w-full max-w-xl flex-col max-h-[90vh] overflow-hidden rounded-xl text-popover-foreground shadow-lg">
+				<div className="app-header-glass flex shrink-0 items-center justify-between border-b border-border/40 p-4">
 					<div className="flex items-center gap-2.5">
-						<Sliders className="w-5 h-5 text-cyan-400" />
-						<h2 className="font-bold text-slate-100 text-base">Chat & Model Parameters</h2>
+						<Sliders className="h-5 w-5 text-primary" />
+						<h2 className="text-base font-bold">Chat & Model Parameters</h2>
 					</div>
 					<button
 						type="button"
 						onClick={onClose}
-						className="p-1.5 text-slate-400 hover:text-slate-100 hover:bg-slate-800 rounded-lg transition-colors"
+						className="btn-ghost rounded-lg p-1.5"
 					>
 						<X className="w-5 h-5" />
 					</button>
@@ -210,12 +210,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
 				<form onSubmit={handleSave} className="flex flex-col flex-1 min-h-0">
 					<div className="flex-1 overflow-y-auto p-5 space-y-6 text-xs">
-					<div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center justify-between">
+					<div className="p-3.5 surface-panel rounded-[1.25rem] flex items-center justify-between">
 						<div className="flex items-center gap-3">
-							<HardDrive className="w-5 h-5 text-cyan-400 shrink-0" />
+							<HardDrive className="h-5 w-5 text-primary shrink-0" />
 							<div>
-								<h4 className="font-semibold text-slate-200">Local Storage Path</h4>
-								<code className="text-cyan-400 font-mono text-[9px]">E:\models</code>
+								<h4 className="font-semibold text-foreground">Local Storage Path</h4>
+								<code className="text-primary font-mono text-[9px]">E:\models</code>
 							</div>
 						</div>
 						<span className="text-[8px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">
@@ -223,15 +223,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 						</span>
 					</div>
 
-					<div className="space-y-3 p-4 rounded-xl bg-slate-900/60 border border-slate-800">
+					<div className="space-y-3 p-4 surface-panel rounded-[1.25rem]">
 						<div className="flex items-center gap-2">
-							<Database className="w-4 h-4 text-emerald-400" />
-							<h4 className="font-semibold text-slate-100 text-sm">PersonalAI Server (SQLite)</h4>
+							<Database className="h-4 w-4 text-emerald-400" />
+							<h4 className="font-semibold text-foreground text-sm">PersonalAI Server (SQLite)</h4>
 						</div>
 
 						<div className="space-y-2">
-							<label className="font-semibold text-slate-200 flex items-center gap-2">
-								<Server className="w-3.5 h-3.5 text-emerald-400" />
+							<label className="font-semibold text-foreground flex items-center gap-2">
+								<Server className="h-3.5 w-3.5 text-primary" />
 								PersonalAI Backend URL
 							</label>
 							<div className="flex gap-2">
@@ -240,13 +240,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 									value={formData.personalaiHost}
 									onChange={(e) => handlePersonalaiHostChange(e.target.value)}
 									placeholder="https://desktop.tailnet.ts.net or empty for local dev proxy"
-									className="flex-1 min-w-0 p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 placeholder-slate-500 font-mono text-xs focus:outline-none focus:border-emerald-500"
+									className="surface-input flex-1 min-w-0 rounded-xl p-2.5 font-mono text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
 								/>
 								<button
 									type="button"
 									onClick={handleTestServerConnection}
 									disabled={serverTestStatus === 'testing'}
-									className="shrink-0 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold transition-colors disabled:opacity-60 flex items-center gap-1.5"
+									className="shrink-0 flex items-center gap-1.5 rounded-xl border border-border bg-secondary px-3 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-accent disabled:opacity-60"
 								>
 									{serverTestStatus === 'testing' ? (
 										<Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -256,7 +256,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 									<span>Test</span>
 								</button>
 							</div>
-							<p className="text-[9px] text-slate-500">
+							<p className="text-[9px] text-muted-foreground">
 								Central persistence on your laptop. Empty = local dev proxy (<code className="font-mono">/api/personalai</code> → 127.0.0.1:3847).
 								When using the backend, leave Ollama Host empty — the server proxies Ollama locally.
 							</p>
@@ -278,25 +278,25 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 								</div>
 							)}
 
-							<div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 text-[9px] text-slate-400 space-y-2 font-mono leading-relaxed">
-								<p className="text-slate-300 font-sans font-semibold text-xs">On your laptop:</p>
+							<div className="surface-panel rounded-xl p-3 text-[9px] text-muted-foreground space-y-2 font-mono leading-relaxed">
+								<p className="text-foreground font-sans font-semibold text-xs">On your laptop:</p>
 								<p>npm run dev:server</p>
 								<p>tailscale serve --bg --https=443 http://127.0.0.1:3847</p>
-								<p className="text-slate-500 font-sans">
+								<p className="text-muted-foreground font-sans">
 									Data stored in <code className="font-mono">PersonalAI-Data/personalai.db</code> (configurable via PERSONALAI_DATA_DIR).
 								</p>
 							</div>
 						</div>
 					</div>
 
-					<div className="space-y-3 p-4 rounded-xl bg-slate-900/60 border border-slate-800">
+					<div className="space-y-3 p-4 surface-panel rounded-[1.25rem]">
 						<div className="flex items-center gap-2">
-							<Network className="w-4 h-4 text-sky-400" />
-							<h4 className="font-semibold text-slate-100 text-sm">Remote Ollama Connection</h4>
+							<Network className="h-4 w-4 text-primary" />
+							<h4 className="font-semibold text-foreground text-sm">Remote Ollama Connection</h4>
 						</div>
 
 						<div className="space-y-2">
-							<label className="font-semibold text-slate-200 flex items-center gap-2">
+							<label className="font-semibold text-foreground flex items-center gap-2">
 								<Server className="w-3.5 h-3.5 text-purple-400" />
 								Ollama Host Endpoint
 							</label>
@@ -306,13 +306,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 									value={formData.ollamaHost}
 									onChange={(e) => handleOllamaHostChange(e.target.value)}
 									placeholder="https://desktop.tailnet.ts.net or leave empty for local dev proxy"
-									className="flex-1 min-w-0 p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 placeholder-slate-500 font-mono text-xs focus:outline-none focus:border-cyan-500"
+									className="surface-input flex-1 min-w-0 rounded-xl p-2.5 font-mono text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
 								/>
 								<button
 									type="button"
 									onClick={handleTestConnection}
 									disabled={testStatus === 'testing'}
-									className="shrink-0 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold transition-colors disabled:opacity-60 flex items-center gap-1.5"
+									className="shrink-0 flex items-center gap-1.5 rounded-xl border border-border bg-secondary px-3 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-accent disabled:opacity-60"
 								>
 									{testStatus === 'testing' ? (
 										<Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -322,7 +322,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 									<span>Test</span>
 								</button>
 							</div>
-							<p className="text-[9px] text-slate-500">
+							<p className="text-[9px] text-muted-foreground">
 								Empty = local Vite proxy (<code className="font-mono">/api</code> → 127.0.0.1:11434).
 								For Vercel or phone access, set a reachable HTTPS URL.
 							</p>
@@ -348,20 +348,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 							)}
 
 							{testHint && testStatus === 'idle' && (
-								<p className="text-[9px] text-slate-400">{testHint}</p>
+								<p className="text-[9px] text-muted-foreground">{testHint}</p>
 							)}
 						</div>
 
-						<div className="pt-3 border-t border-slate-800/80 space-y-3">
+						<div className="pt-3 border-t border-border/80 space-y-3">
 							<div className="flex items-center justify-between gap-2">
 								<div>
-									<h5 className="font-semibold text-slate-200 text-sm">Tailscale Serve</h5>
-									<p className="text-[9px] text-slate-500 mt-0.5">
+									<h5 className="font-semibold text-foreground text-sm">Tailscale Serve</h5>
+									<p className="text-[9px] text-muted-foreground mt-0.5">
 										Private HTTPS access from your phone without exposing Ollama publicly.
 									</p>
 								</div>
 								{isTailscale && (
-									<span className="text-[8px] px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-300 border border-sky-500/30 font-medium shrink-0">
+									<span className="shrink-0 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[8px] font-medium text-primary">
 										Active
 									</span>
 								)}
@@ -375,7 +375,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 										setFormData({ ...formData, tailscaleMachine: e.target.value })
 									}
 									placeholder="Machine name (e.g. desktop)"
-									className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 placeholder-slate-500 text-xs focus:outline-none focus:border-sky-500"
+									className="surface-input rounded-xl p-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
 								/>
 								<input
 									type="text"
@@ -384,30 +384,30 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 										setFormData({ ...formData, tailscaleTailnet: e.target.value })
 									}
 									placeholder="Tailnet (e.g. tail12345)"
-									className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 placeholder-slate-500 text-xs focus:outline-none focus:border-sky-500"
+									className="surface-input rounded-xl p-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
 								/>
 							</div>
 
 							<button
 								type="button"
 								onClick={handleApplyTailscaleUrl}
-								className="w-full px-3 py-2 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/30 text-sky-300 text-xs font-semibold transition-colors"
+								className="w-full rounded-xl border border-primary/30 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary/20"
 							>
 								Apply Tailscale Serve URL
 							</button>
 
-							<div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 text-[9px] text-slate-400 space-y-2 font-mono leading-relaxed">
-								<p className="text-slate-300 font-sans font-semibold text-xs">Direct Ollama only (optional):</p>
+							<div className="surface-panel rounded-xl p-3 text-[9px] text-muted-foreground space-y-2 font-mono leading-relaxed">
+								<p className="text-foreground font-sans font-semibold text-xs">Direct Ollama only (optional):</p>
 								<p>tailscale serve --bg --https=443 http://127.0.0.1:11434</p>
 								<p>setx OLLAMA_ORIGINS &quot;{appOrigin}&quot;</p>
-								<p className="text-slate-500 font-sans">
+								<p className="text-muted-foreground font-sans">
 									Skip this if the PersonalAI backend proxies Ollama. Install Tailscale on your phone and sign into the same tailnet.
 								</p>
 							</div>
 						</div>
 					</div>
 
-					<div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 flex items-center justify-between">
+					<div className="p-4 surface-panel rounded-[1.25rem] flex items-center justify-between">
 						<div className="space-y-1">
 							<div className="flex items-center gap-2">
 								{formData.enableThinking ? (
@@ -415,11 +415,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 								) : (
 									<Zap className="w-4 h-4 text-amber-400" />
 								)}
-								<h4 className="font-semibold text-slate-100 text-sm">
+								<h4 className="font-semibold text-foreground text-sm">
 									{formData.enableThinking ? 'Thinking Mode (Deep Reasoning)' : 'Fast Mode (No Thinking)'}
 								</h4>
 							</div>
-							<p className="text-[9px] text-slate-400 max-w-sm">
+							<p className="text-[9px] text-muted-foreground max-w-sm">
 								{formData.enableThinking
 									? 'Model generates step-by-step thought processes before responding. Higher accuracy, slower speed.'
 									: 'Model skips internal reasoning and responds directly. Up to 3x-5x faster responses!'}
@@ -429,7 +429,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 							type="button"
 							onClick={() => setFormData({ ...formData, enableThinking: !formData.enableThinking })}
 							className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-								formData.enableThinking ? 'bg-purple-600' : 'bg-slate-700'
+								formData.enableThinking ? 'bg-purple-600' : 'bg-muted'
 							}`}
 						>
 							<span
@@ -442,14 +442,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
 					<div className="space-y-2">
 						<div className="flex items-center justify-between">
-							<label className="font-semibold text-slate-200 text-sm">System Prompt</label>
+							<label className="font-semibold text-foreground text-sm">System Prompt</label>
 							<div className="flex gap-1.5">
 								{systemPresets.map((preset) => (
 									<button
 										key={preset.name}
 										type="button"
 										onClick={() => setFormData({ ...formData, systemPrompt: preset.prompt })}
-										className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[8px] font-medium transition-colors"
+										className="rounded bg-secondary px-2 py-0.5 text-[8px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
 									>
 										{preset.name}
 									</button>
@@ -460,15 +460,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 							value={formData.systemPrompt}
 							onChange={(e) => setFormData({ ...formData, systemPrompt: e.target.value })}
 							rows={3}
-							className="w-full p-3 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-500 resize-none font-mono leading-relaxed"
+							className="surface-input w-full resize-none rounded-xl p-3 font-mono leading-relaxed text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
 						/>
 					</div>
 
 					<div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-						<div className="space-y-2 p-3.5 rounded-xl bg-slate-900/40 border border-slate-800/80">
+						<div className="surface-panel rounded-xl p-3.5 border-border/80">
 							<div className="flex justify-between items-center">
-								<label className="font-semibold text-slate-200">Temperature</label>
-								<span className="font-mono text-cyan-400 font-bold">{formData.temperature}</span>
+								<label className="font-semibold text-foreground">Temperature</label>
+								<span className="font-mono text-primary font-bold">{formData.temperature}</span>
 							</div>
 							<input
 								type="range"
@@ -477,17 +477,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 								step="0.05"
 								value={formData.temperature}
 								onChange={(e) => setFormData({ ...formData, temperature: parseFloat(e.target.value) })}
-								className="w-full accent-cyan-400 cursor-pointer"
+								className="w-full accent-primary cursor-pointer"
 							/>
-							<p className="text-[8px] text-slate-400">
+							<p className="text-[8px] text-muted-foreground">
 								Higher = more creative & diverse. Lower = deterministic & focused.
 							</p>
 						</div>
 
-						<div className="space-y-2 p-3.5 rounded-xl bg-slate-900/40 border border-slate-800/80">
+						<div className="surface-panel rounded-xl p-3.5 border-border/80">
 							<div className="flex justify-between items-center">
-								<label className="font-semibold text-slate-200">Top-P (Nucleus Sampling)</label>
-								<span className="font-mono text-cyan-400 font-bold">{formData.topP}</span>
+								<label className="font-semibold text-foreground">Top-P (Nucleus Sampling)</label>
+								<span className="font-mono text-primary font-bold">{formData.topP}</span>
 							</div>
 							<input
 								type="range"
@@ -496,22 +496,22 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 								step="0.05"
 								value={formData.topP}
 								onChange={(e) => setFormData({ ...formData, topP: parseFloat(e.target.value) })}
-								className="w-full accent-cyan-400 cursor-pointer"
+								className="w-full accent-primary cursor-pointer"
 							/>
-							<p className="text-[8px] text-slate-400">
+							<p className="text-[8px] text-muted-foreground">
 								Considers cumulative probability cutoff for token selection.
 							</p>
 						</div>
 
-						<div className="space-y-2 p-3.5 rounded-xl bg-slate-900/40 border border-slate-800/80">
+						<div className="surface-panel rounded-xl p-3.5 border-border/80">
 							<div className="flex justify-between items-center">
-								<label className="font-semibold text-slate-200">Context Window (Tokens)</label>
-								<span className="font-mono text-cyan-400 font-bold">{formData.contextWindow}</span>
+								<label className="font-semibold text-foreground">Context Window (Tokens)</label>
+								<span className="font-mono text-primary font-bold">{formData.contextWindow}</span>
 							</div>
 							<select
 								value={formData.contextWindow}
 								onChange={(e) => setFormData({ ...formData, contextWindow: parseInt(e.target.value) })}
-								className="w-full p-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-200 focus:outline-none"
+								className="surface-input w-full rounded-lg p-2 text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
 							>
 								<option value={4096}>4,096 (Standard)</option>
 								<option value={8192}>8,192 (Medium)</option>
@@ -521,21 +521,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 								<option value={131072}>131,072 (128k)</option>
 								<option value={262144}>262,144 (256k — qwen3.5)</option>
 							</select>
-							<p className="text-[8px] text-slate-500">
-								Sent to Ollama as <code className="font-mono text-slate-400">num_ctx</code> on each request.
+							<p className="text-[8px] text-muted-foreground">
+								Sent to Ollama as <code className="font-mono text-muted-foreground">num_ctx</code> on each request.
 								Match your Ollama / model limit (e.g. 256k).
 							</p>
 						</div>
 
-						<div className="space-y-2 p-3.5 rounded-xl bg-slate-900/40 border border-slate-800/80">
+						<div className="surface-panel rounded-xl p-3.5 border-border/80">
 							<div className="flex justify-between items-center">
-								<label className="font-semibold text-slate-200">Max Generation Tokens</label>
-								<span className="font-mono text-cyan-400 font-bold">{formData.maxTokens}</span>
+								<label className="font-semibold text-foreground">Max Generation Tokens</label>
+								<span className="font-mono text-primary font-bold">{formData.maxTokens}</span>
 							</div>
 							<select
 								value={formData.maxTokens}
 								onChange={(e) => setFormData({ ...formData, maxTokens: parseInt(e.target.value) })}
-								className="w-full p-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-200 focus:outline-none"
+								className="surface-input w-full rounded-lg p-2 text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
 							>
 								<option value={1024}>1,024 Tokens</option>
 								<option value={2048}>2,048 Tokens</option>
@@ -546,17 +546,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 					</div>
 
 					{endpointKind !== 'vite-proxy' && (
-						<p className="text-[9px] text-slate-500">
-							Endpoint type: <span className="text-slate-300">{getEndpointLabel(endpointKind)}</span>
+						<p className="text-[9px] text-muted-foreground">
+							Endpoint type: <span className="text-foreground">{getEndpointLabel(endpointKind)}</span>
 						</p>
 					)}
 					</div>
 
-					<div className="p-4 border-t border-slate-800 bg-slate-900/60 flex items-center justify-between shrink-0">
+					<div className="app-header-glass shrink-0 flex items-center justify-between border-t border-border/40 p-4">
 					<button
 						type="button"
 						onClick={handleReset}
-						className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors"
+						className="btn-ghost flex items-center gap-1.5 rounded-xl px-3 py-2"
 					>
 						<RotateCcw className="w-3.5 h-3.5" />
 						<span>Reset Defaults</span>
@@ -566,7 +566,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 						<button
 							type="button"
 							onClick={onClose}
-							className="px-4 py-2 rounded-xl text-slate-300 hover:bg-slate-800 transition-colors"
+							className="btn-ghost rounded-xl px-4 py-2"
 						>
 							Cancel
 						</button>
@@ -576,7 +576,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 								e.preventDefault()
 								handleSave(e)
 							}}
-							className="flex items-center gap-2 px-5 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold transition-all shadow-md shadow-cyan-500/20"
+							className="btn-primary flex items-center gap-2 rounded-xl px-5 py-2 font-semibold transition-all"
 						>
 							{saved ? (
 								<>

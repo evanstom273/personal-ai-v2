@@ -21,9 +21,7 @@ import {
 	ingestUploadedDocumentContent,
 } from '@/utils/documentContent'
 import type { ChatAttachment, ChatInputMethod, ChatSubmitPayload } from '@/types/chat'
-import type { GenerationIntent } from '@/services/gemini/constants'
 import type { StoredMessage } from '@/storage/types'
-import { MODEL_CATEGORY_LABELS } from '@/services/gemini/models'
 import {
 	getFileBaseName,
 	isImageFile,
@@ -36,18 +34,8 @@ import { cn } from '@/utils/cn'
 interface ChatInputProps {
 	disabled?: boolean
 	isGenerating?: boolean
-	webSearchEnabled: boolean
-	geminiApiKey: string
-	transcriptionModelId: string
 	selectedChatModelId: string
-	selectedImageModelId: string
-	selectedMusicModelId: string
-	onWebSearchChange: (enabled: boolean) => void
 	onChatModelChange: (modelId: string) => void
-	onImageModelChange: (modelId: string) => void
-	onMusicModelChange: (modelId: string) => void
-	forcedNextIntent: GenerationIntent | null
-	onForceNextIntent: (intent: GenerationIntent | null) => void
 	onSubmit: (payload: ChatSubmitPayload) => void
 	onStop?: () => void
 	editingMessage?: StoredMessage | null
@@ -57,18 +45,8 @@ interface ChatInputProps {
 export function ChatInput({
 	disabled,
 	isGenerating,
-	webSearchEnabled,
-	geminiApiKey,
-	transcriptionModelId,
 	selectedChatModelId,
-	selectedImageModelId,
-	selectedMusicModelId,
-	onWebSearchChange,
 	onChatModelChange,
-	onImageModelChange,
-	onMusicModelChange,
-	forcedNextIntent,
-	onForceNextIntent,
 	onSubmit,
 	onStop,
 	editingMessage = null,
@@ -110,9 +88,10 @@ export function ChatInput({
 		continueListening,
 		cancelListening,
 	} = useSpeechRecognition({
-		geminiApiKey,
-		transcriptionModelId,
+		geminiApiKey: '',
+		transcriptionModelId: '',
 	})
+	const voiceInputEnabled = false
 
 	const isListening = status === 'listening'
 	const isTranscribing = status === 'transcribing'
@@ -275,7 +254,7 @@ export function ChatInput({
 		onSubmit({
 			text: messageText,
 			attachments,
-			webSearchEnabled,
+			webSearchEnabled: false,
 			inputMethod,
 			editFromMessageId: editingMessage?.id,
 		})
@@ -525,39 +504,6 @@ export function ChatInput({
 				</div>
 			) : null}
 
-			{webSearchEnabled || forcedNextIntent ? (
-				<div className="mx-auto mb-2 flex max-w-3xl flex-wrap items-center gap-2">
-					{forcedNextIntent ? (
-						<>
-							<span className="rounded-full bg-primary/15 px-2.5 py-1 text-xs font-medium text-primary">
-								Next: {MODEL_CATEGORY_LABELS[forcedNextIntent]} generation
-							</span>
-							<button
-								type="button"
-								className="text-xs text-muted-foreground underline-offset-4 hover:underline"
-								onClick={() => onForceNextIntent(null)}
-							>
-								Cancel
-							</button>
-						</>
-					) : null}
-					{webSearchEnabled ? (
-						<>
-							<span className="rounded-full bg-secondary px-2.5 py-1 text-xs font-medium text-secondary-foreground ring-1 ring-border">
-								Web search on
-							</span>
-							<button
-								type="button"
-								className="text-xs text-muted-foreground underline-offset-4 hover:underline"
-								onClick={() => onWebSearchChange(false)}
-							>
-								Turn off
-							</button>
-						</>
-					) : null}
-				</div>
-			) : null}
-
 			{attachments.length > 0 ? (
 				<div className="mx-auto mb-2 flex max-w-3xl flex-wrap gap-2">
 					{attachments.map((attachment) => (
@@ -607,16 +553,8 @@ export function ChatInput({
 				>
 					<ChatAttachMenu
 						disabled={disabled || isGenerating || isListening || isTranscribing}
-						webSearchEnabled={webSearchEnabled}
 						selectedChatModelId={selectedChatModelId}
-						selectedImageModelId={selectedImageModelId}
-						selectedMusicModelId={selectedMusicModelId}
-						onWebSearchChange={onWebSearchChange}
 						onChatModelChange={onChatModelChange}
-						onImageModelChange={onImageModelChange}
-						onMusicModelChange={onMusicModelChange}
-						forcedNextIntent={forcedNextIntent}
-						onForceNextIntent={onForceNextIntent}
 						onDocumentUpload={(files) => {
 							void handleDocumentUploads(files)
 						}}
@@ -625,7 +563,7 @@ export function ChatInput({
 						}}
 					/>
 
-					{isSupported ? (
+					{voiceInputEnabled && isSupported ? (
 						<Button
 							type="button"
 							size="icon"

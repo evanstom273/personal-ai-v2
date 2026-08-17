@@ -280,6 +280,19 @@ export function useServerMainConversation(defaultModelId: string) {
 		setConversation(null)
 	}, [host, sessionId])
 
+	const setActiveModel = useCallback(
+		async (modelId: string): Promise<void> => {
+			if (!sessionId || !conversation) return
+			await updateSession(host, sessionId, { model: modelId })
+			setConversation({
+				...conversation,
+				modelId,
+				updatedAt: Date.now(),
+			})
+		},
+		[conversation, host, sessionId],
+	)
+
 	return {
 		conversation,
 		isLoading,
@@ -294,5 +307,6 @@ export function useServerMainConversation(defaultModelId: string) {
 		saveConversation: persistSession,
 		reloadConversation: loadConversation,
 		deleteMainSession,
+		setActiveModel,
 	}
 }

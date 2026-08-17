@@ -235,21 +235,26 @@ export async function generateOllamaChatWithTools(
 	)
 	const endpoint = buildOllamaApiUrl(ollamaHost, '/api/chat')
 
-	let systemPrompt = await buildFullSystemInstruction(preferences)
+	const suffixSections: string[] = []
 
 	if (options.userMessageText) {
 		const mentionContext = await buildMentionedDocumentsContext(
 			options.userMessageText,
 		)
 		if (mentionContext) {
-			systemPrompt = `${systemPrompt}\n\n${mentionContext}`
+			suffixSections.push(mentionContext)
 		}
 	}
 
 	if (!settings.enableThinking) {
-		systemPrompt +=
-			'\n\nRespond directly and concisely. Do not output internal reasoning or redacted_thinking tags.'
+		suffixSections.push(
+			'Do not output internal reasoning or redacted_thinking tags.',
+		)
 	}
+
+	const systemPrompt = await buildFullSystemInstruction(preferences, {
+		suffixSections,
+	})
 
 	const formattedMessages: OllamaChatMessage[] = []
 	if (systemPrompt.trim()) {

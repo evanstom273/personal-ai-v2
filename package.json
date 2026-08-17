@@ -11,7 +11,7 @@
     "build:server": "npm run build --prefix server",
     "lint": "oxlint",
     "preview": "vite preview",
-    "postinstall": "npm install --prefix server",
+    "postinstall": "node scripts/postinstall.mjs",
     "pm2:start": "pm2 start ecosystem.config.cjs",
     "pm2:stop": "pm2 stop personalai",
     "pm2:logs": "pm2 logs personalai"

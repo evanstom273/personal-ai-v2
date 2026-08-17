@@ -1,4 +1,3 @@
-import type { GenerationIntent } from '@/services/gemini/constants'
 import {
 	useChatGenerationContext,
 	useChatHeaderSlot,
@@ -7,10 +6,8 @@ import {
 	useTextToSpeechContext,
 } from '@/providers/ChatProvider'
 import { confirmDocumentDeletion } from '@/services/gemini/documentTools'
-import { getTranscriptionModelId } from '@/services/gemini/modelPreferences'
 import { getConfiguredAiName } from '@/services/gemini/systemInstruction'
-import type { StoredMessage, UserPreferences } from '@/storage/types'
-import { getActiveGeminiApiKey } from '@/storage/geminiApiKeys'
+import type { StoredMessage } from '@/storage/types'
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ChatConversationActions } from '@/components/chat/ChatConversationActions'
@@ -27,15 +24,16 @@ export function ChatPage() {
 		clearConversation,
 		replaceConversation,
 		serverOnline,
+		setActiveModel,
 	} = useMainConversationContext()
 	const {
 		isGenerating,
 		error,
-		lastIntent,
 		streamingAssistant,
 		submitMessage,
 		stopGeneration,
 		clearCompletionNotice,
+		updateChatSettings,
 	} = useChatGenerationContext()
 	const {
 		activeMessageId: activeSpeechMessageId,
@@ -47,28 +45,24 @@ export function ChatPage() {
 	} = useTextToSpeechContext()
 	const { slot: voiceHeaderSlot } = useChatHeaderSlot()
 
-	const [webSearchEnabled, setWebSearchEnabled] = useState(false)
-	const [forcedNextIntent, setForcedNextIntent] =
-		useState<GenerationIntent | null>(null)
-	const [editingMessage, setEditingMessage] = useState<StoredMessage | null>(
-		null,
-	)
+	const [editingMessage, setEditingMessage] = useState<StoredMessage | null>(null)
 
 	const aiName = getConfiguredAiName(preferences)
 	const chatReady = serverOnline
+	const activeModelId =
+		conversation?.modelId ?? preferences.defaultModelId
 
 	useEffect(() => {
 		clearCompletionNotice()
 	}, [clearCompletionNotice])
 
-	const saveModelPreference = useCallback(
-		async (patch: Partial<UserPreferences>) => {
-			await savePreferences({
-				...preferences,
-				...patch,
-			})
+	const handleSelectModel = useCallback(
+		async (modelId: string) => {
+			await savePreferences({ ...preferences, defaultModelId: modelId })
+			await setActiveModel(modelId)
+			await updateChatSettings({ activeModel: modelId })
 		},
-		[preferences, savePreferences],
+		[preferences, savePreferences, setActiveModel, updateChatSettings],
 	)
 
 	const handleClearChat = useCallback(async () => {
@@ -160,29 +154,36 @@ export function ChatPage() {
 							onImport={handleImportChat}
 						/>
 					</div>
-					<p className="text-xs text-muted-foreground">
-						Local Ollama chat
-						{lastIntent ? ` · last: ${lastIntent}` : ''}
-					</p>
+					<p className="text-xs text-muted-foreground">Local Ollama · {activeModelId}</p>
 				</div>
 				<OllamaChatModelSelector
-					value={conversation?.modelId ?? preferences.defaultModelId}
+					value={activeModelId}
 					onChange={(modelId) => {
-						void saveModelPreference({ defaultModelId: modelId })
+						void handleSelectModel(modelId)
 					}}
 				/>
 			</header>
 
+			<div className="flex shrink-0 items-center justify-between gap-2 border-b border-border/60 px-3 py-2 md:hidden">
+				<span className="truncate text-xs text-muted-foreground">
+					Model: <span className="font-medium text-foreground">{activeModelId}</span>
+				</span>
+				<OllamaChatModelSelector
+					value={activeModelId}
+					onChange={(modelId) => {
+						void handleSelectModel(modelId)
+					}}
+				/>
+			</div>
+
 			{!chatReady ? (
 				<div className="shrink-0 border-b border-border bg-secondary/40 px-4 py-2 text-sm md:px-6">
-					<span className="text-muted-foreground">
-						PersonalAI server offline.{' '}
-					</span>
+					<span className="text-muted-foreground">PersonalAI server offline. </span>
 					<Link
 						to="/settings"
 						className="font-medium text-primary underline-offset-4 hover:underline"
 					>
-						Check local connection settings
+						Check connection settings
 					</Link>
 				</div>
 			) : null}
@@ -227,23 +228,9 @@ export function ChatPage() {
 			<ChatInput
 				disabled={!chatReady}
 				isGenerating={isGenerating}
-				webSearchEnabled={webSearchEnabled}
-				geminiApiKey={getActiveGeminiApiKey(preferences)}
-				transcriptionModelId={getTranscriptionModelId(preferences.defaultModelId)}
-				selectedChatModelId={preferences.defaultModelId}
-				selectedImageModelId={preferences.defaultImageModelId}
-				selectedMusicModelId={preferences.defaultMusicModelId}
-				forcedNextIntent={forcedNextIntent}
-				onForceNextIntent={setForcedNextIntent}
-				onWebSearchChange={setWebSearchEnabled}
+				selectedChatModelId={activeModelId}
 				onChatModelChange={(modelId) => {
-					void saveModelPreference({ defaultModelId: modelId })
-				}}
-				onImageModelChange={(modelId) => {
-					void saveModelPreference({ defaultImageModelId: modelId })
-				}}
-				onMusicModelChange={(modelId) => {
-					void saveModelPreference({ defaultMusicModelId: modelId })
+					void handleSelectModel(modelId)
 				}}
 				editingMessage={editingMessage}
 				onCancelEdit={() => setEditingMessage(null)}

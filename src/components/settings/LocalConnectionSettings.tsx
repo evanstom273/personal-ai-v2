@@ -274,10 +274,7 @@ export function LocalConnectionSettings() {
 
 			<div className="flex items-start gap-2 rounded-lg border border-border/60 bg-background/40 p-3 text-xs text-muted-foreground">
 				<HardDrive className="mt-0.5 h-4 w-4 shrink-0" />
-				<p>
-					Gemini API keys below are still used for documents, memory, and other assistant features.
-					Chat on the Chat tab uses Ollama only.
-				</p>
+				<p>Chat uses local Ollama models only. Documents and other features may use on-device storage.</p>
 			</div>
 		</section>
 	)

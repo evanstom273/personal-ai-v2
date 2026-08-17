@@ -3,8 +3,6 @@ import {
 	Brain,
 	Columns,
 	Download,
-	ExternalLink,
-	KeyRound,
 	Mic,
 	PlugZap,
 	RefreshCw,
@@ -18,26 +16,22 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { LocalConnectionSettings } from '@/components/settings/LocalConnectionSettings'
+import { OllamaModelsList } from '@/components/settings/OllamaModelsList'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { usePreferencesContext, useTextToSpeechContext, useMainConversationContext, useChatGenerationContext } from '@/providers/ChatProvider'
-import { validateApiKey } from '@/services/gemini/validate'
 import {
 	requestBackgroundReminderNotificationPermission,
 	syncBackgroundReminderNotifications,
 } from '@/services/reminders/reminderBackgroundNotifications'
 import { canUseNotificationTriggers } from '@/services/reminders/reminderNotificationTriggers'
 import { GEMINI_TTS_VOICES } from '@/services/gemini/ttsVoices'
-import { GEMINI_MODELS, MODEL_CATEGORY_LABELS } from '@/services/gemini/models'
 import {
 	MEMORY_ARCHIVE_INTERVAL_OPTIONS,
-	type GeminiApiKeySlot,
 	type MemoryArchiveInterval,
 	type TtsReadAloudMode,
 } from '@/storage/types'
 import {
-	GEMINI_API_KEY_SLOT_LABELS,
 	getActiveGeminiApiKey,
-	hasGeminiApiKey,
 } from '@/storage/geminiApiKeys'
 import {
 	canUseNotifications,
@@ -66,7 +60,7 @@ import {
 const SETTINGS_TABS = [
 	{ id: 'profile', label: 'Profile', icon: UserRound },
 	{ id: 'memory', label: 'Memory', icon: Brain },
-	{ id: 'api', label: 'API', icon: KeyRound },
+	{ id: 'api', label: 'Local', icon: PlugZap },
 	{ id: 'voice', label: 'Voice', icon: Volume2 },
 	{ id: 'app', label: 'App', icon: Bell },
 ] as const
@@ -82,10 +76,6 @@ export function SettingsPage() {
 	const { previewVoice, status: speechStatus } = useTextToSpeechContext()
 	const { memoryArchiveError, clearMemoryArchiveError } =
 		useChatGenerationContext()
-	const [paidApiKey, setPaidApiKey] = useState('')
-	const [freeApiKey, setFreeApiKey] = useState('')
-	const [activeApiKeySlot, setActiveApiKeySlot] =
-		useState<GeminiApiKeySlot>('paid')
 	const [userName, setUserName] = useState('')
 	const [aiName, setAiName] = useState('')
 	const [aiBehaviorInstructions, setAiBehaviorInstructions] = useState('')
@@ -95,13 +85,8 @@ export function SettingsPage() {
 	const [ttsReadAloudMode, setTtsReadAloudMode] =
 		useState<TtsReadAloudMode>('never')
 	const [ttsVoiceName, setTtsVoiceName] = useState('Kore')
-	const [savedApiKey, setSavedApiKey] = useState(false)
 	const [savedIdentity, setSavedIdentity] = useState(false)
-	const [isSavingApiKey, setIsSavingApiKey] = useState(false)
 	const [isSavingIdentity, setIsSavingIdentity] = useState(false)
-	const [isValidating, setIsValidating] = useState(false)
-	const [validationMessage, setValidationMessage] = useState<string | null>(null)
-	const [validationOk, setValidationOk] = useState<boolean | null>(null)
 	const [notificationPermission, setNotificationPermission] = useState(
 		getNotificationPermission(),
 	)
@@ -121,9 +106,6 @@ export function SettingsPage() {
 
 	useEffect(() => {
 		if (!isLoading) {
-			setPaidApiKey(preferences.geminiApiKeyPaid)
-			setFreeApiKey(preferences.geminiApiKeyFree)
-			setActiveApiKeySlot(preferences.activeGeminiApiKeySlot)
 			setUserName(preferences.userName)
 			setAiName(preferences.aiName)
 			setAiBehaviorInstructions(preferences.aiBehaviorInstructions)
@@ -141,35 +123,6 @@ export function SettingsPage() {
 
 	function setActiveTab(tab: SettingsTab): void {
 		setSearchParams(tab === 'profile' ? {} : { tab })
-	}
-
-	async function handleSaveApiKeys(): Promise<void> {
-		setIsSavingApiKey(true)
-		setSavedApiKey(false)
-		try {
-			await savePreferences({
-				...preferences,
-				geminiApiKeyPaid: paidApiKey.trim(),
-				geminiApiKeyFree: freeApiKey.trim(),
-				activeGeminiApiKeySlot: activeApiKeySlot,
-			})
-			setSavedApiKey(true)
-		} finally {
-			setIsSavingApiKey(false)
-		}
-	}
-
-	async function handleActiveApiKeySlotChange(slot: GeminiApiKeySlot): Promise<void> {
-		setActiveApiKeySlot(slot)
-		setSavedApiKey(false)
-		setValidationMessage(null)
-		setValidationOk(null)
-		await savePreferences({
-			...preferences,
-			geminiApiKeyPaid: paidApiKey.trim(),
-			geminiApiKeyFree: freeApiKey.trim(),
-			activeGeminiApiKeySlot: slot,
-		})
 	}
 
 	async function handleSaveIdentity(): Promise<void> {
@@ -284,7 +237,7 @@ export function SettingsPage() {
 		const estimatedBatches = Math.ceil(unarchivedCount / batchSize)
 		if (estimatedBatches > MANUAL_ARCHIVE_CONFIRM_BATCHES) {
 			const confirmed = window.confirm(
-				`Archive now will run about ${estimatedBatches} Gemini API calls to scan ${unarchivedCount} messages. Continue?`,
+				`Archive now will scan ${unarchivedCount} messages. Continue?`,
 			)
 			if (!confirmed) {
 				return
@@ -343,7 +296,7 @@ export function SettingsPage() {
 			}
 
 			setNotificationMessage(
-				'Notifications are blocked. Enable them in Android settings for Gemini Chat.',
+				'Notifications are blocked. Enable them in Android settings for PersonalAI.',
 			)
 			return
 		}
@@ -374,24 +327,6 @@ export function SettingsPage() {
 		}
 
 		setNotificationMessage('Notification permission was not granted.')
-	}
-
-	async function handleValidate(): Promise<void> {
-		setIsValidating(true)
-		setValidationMessage(null)
-		setValidationOk(null)
-		try {
-			const result = await validateApiKey(getActiveGeminiApiKey({
-				...preferences,
-				geminiApiKeyPaid: paidApiKey.trim(),
-				geminiApiKeyFree: freeApiKey.trim(),
-				activeGeminiApiKeySlot: activeApiKeySlot,
-			}))
-			setValidationOk(result.ok)
-			setValidationMessage(result.message)
-		} finally {
-			setIsValidating(false)
-		}
 	}
 
 	return (
@@ -453,7 +388,7 @@ export function SettingsPage() {
 							unarchivedMessageCount={
 								conversation ? getUnarchivedMessages(conversation).length : 0
 							}
-							hasApiKey={hasGeminiApiKey(preferences)}
+							hasApiKey={false}
 							isClearingMemory={isClearingMemory}
 							isArchivingMemory={isArchivingMemory}
 							actionMessage={memoryActionMessage}
@@ -466,40 +401,14 @@ export function SettingsPage() {
 					) : null}
 
 					{activeTab === 'api' ? (
-						<ApiTab
-							paidApiKey={paidApiKey}
-							freeApiKey={freeApiKey}
-							activeApiKeySlot={activeApiKeySlot}
-							savedApiKey={savedApiKey}
-							isSavingApiKey={isSavingApiKey}
-							isValidating={isValidating}
-							validationMessage={validationMessage}
-							validationOk={validationOk}
-							onPaidApiKeyChange={(value) => {
-								setPaidApiKey(value)
-								setSavedApiKey(false)
-								setValidationMessage(null)
-								setValidationOk(null)
-							}}
-							onFreeApiKeyChange={(value) => {
-								setFreeApiKey(value)
-								setSavedApiKey(false)
-								setValidationMessage(null)
-								setValidationOk(null)
-							}}
-							onActiveApiKeySlotChange={(slot) =>
-								void handleActiveApiKeySlotChange(slot)
-							}
-							onSave={() => void handleSaveApiKeys()}
-							onValidate={() => void handleValidate()}
-						/>
+						<LocalTab />
 					) : null}
 
 					{activeTab === 'voice' ? (
 						<VoiceTab
 							ttsReadAloudMode={ttsReadAloudMode}
 							ttsVoiceName={ttsVoiceName}
-							hasApiKey={hasGeminiApiKey(preferences)}
+							hasApiKey={false}
 							speechStatus={speechStatus}
 							onReadAloudModeChange={(value) =>
 								void handleTtsReadAloudModeChange(value)
@@ -583,7 +492,7 @@ function ProfileTab({
 					<FieldGroup
 						icon={Sparkles}
 						label="AI name"
-						hint="Shown in the app and sent to Gemini."
+						hint="Shown in the app header and chat."
 					>
 						<input
 							value={aiName}
@@ -617,10 +526,8 @@ function ProfileTab({
 					<span>
 						<span className="block font-medium">Allow mature content</span>
 						<span className="mt-1 block text-muted-foreground">
-							Matches your tone (including swearing), relaxes adjustable Gemini
-							filters for chat, image, and music, and allows adult people in
-							generated images. Illegal content is always blocked. Turn off for
-							stricter filtering.
+							Matches your tone (including swearing) in the local model system prompt.
+							Turn off for stricter filtering in generated images and documents.
 						</span>
 					</span>
 				</label>
@@ -673,10 +580,7 @@ function MemoryTab({
 
 			<section className="surface-panel space-y-4 rounded-xl p-5">
 				<p className="text-sm text-muted-foreground">
-					After this many new chat messages, the assistant reads the batch and
-					archives durable facts into Memory. Lower values update more often;
-					higher values wait for more context per pass. Archival uses Gemini 3.6
-					Flash on paid keys, or your Flash-Lite chat model on free-tier keys.
+					Memory archival from chat is not enabled in local-only mode.
 				</p>
 
 				<div className="space-y-3">
@@ -738,11 +642,9 @@ function MemoryTab({
 						{isClearingMemory ? 'Clearing…' : 'Clear memory'}
 					</Button>
 				</div>
-				{!hasApiKey ? (
 					<p className="text-xs text-muted-foreground">
-						Add a Gemini API key in the API tab to run manual archive.
+						Memory archival from chat is unavailable without a cloud AI provider.
 					</p>
-				) : null}
 				{actionMessage ? (
 					<p className="text-sm text-muted-foreground">{actionMessage}</p>
 				) : null}
@@ -781,193 +683,19 @@ function MemoryTab({
 	)
 }
 
-function ApiTab({
-	paidApiKey,
-	freeApiKey,
-	activeApiKeySlot,
-	savedApiKey,
-	isSavingApiKey,
-	isValidating,
-	validationMessage,
-	validationOk,
-	onPaidApiKeyChange,
-	onFreeApiKeyChange,
-	onActiveApiKeySlotChange,
-	onSave,
-	onValidate,
-}: {
-	paidApiKey: string
-	freeApiKey: string
-	activeApiKeySlot: GeminiApiKeySlot
-	savedApiKey: boolean
-	isSavingApiKey: boolean
-	isValidating: boolean
-	validationMessage: string | null
-	validationOk: boolean | null
-	onPaidApiKeyChange: (value: string) => void
-	onFreeApiKeyChange: (value: string) => void
-	onActiveApiKeySlotChange: (slot: GeminiApiKeySlot) => void
-	onSave: () => void
-	onValidate: () => void
-}) {
-	const activeKeyDraft =
-		activeApiKeySlot === 'paid' ? paidApiKey.trim() : freeApiKey.trim()
-
+function LocalTab() {
 	return (
 		<div className="space-y-5">
 			<TabIntro
-				title="API & models"
-				description="Local Ollama chat plus optional Gemini keys for documents, memory, and other AI features."
+				title="Local models & server"
+				description="Ollama on your machine, synced through the PersonalAI backend."
 			/>
-
 			<LocalConnectionSettings />
-
-			<section className="surface-panel space-y-4 rounded-xl p-5">
-				<FieldGroup
-					icon={KeyRound}
-					label="Active API key"
-					hint="The app uses this key for chat, voice, memory archival, and document AI."
-				>
-					<select
-						value={activeApiKeySlot}
-						onChange={(event) =>
-							onActiveApiKeySlotChange(event.target.value as GeminiApiKeySlot)
-						}
-						className="w-full rounded-lg surface-input px-3 py-2 text-sm outline-none ring-ring focus:ring-2"
-					>
-						{(Object.keys(GEMINI_API_KEY_SLOT_LABELS) as GeminiApiKeySlot[]).map(
-							(slot) => {
-								const slotHasKey =
-									slot === 'paid'
-										? paidApiKey.trim().length > 0
-										: freeApiKey.trim().length > 0
-
-								return (
-									<option key={slot} value={slot}>
-										{GEMINI_API_KEY_SLOT_LABELS[slot]}
-										{slotHasKey ? '' : ' (not saved)'}
-									</option>
-								)
-							},
-						)}
-					</select>
-				</FieldGroup>
-
-				<FieldGroup
-					label="Paid key"
-					hint="Your Tier 2 or billing-enabled key — Flash Lite, web search allowance, etc."
-				>
-					<input
-						type="password"
-						value={paidApiKey}
-						onChange={(event) => onPaidApiKeyChange(event.target.value)}
-						placeholder="AIza..."
-						autoComplete="off"
-						className="w-full rounded-lg surface-input px-3 py-2 text-sm outline-none ring-ring focus:ring-2"
-					/>
-				</FieldGroup>
-
-				<FieldGroup
-					label="Free key"
-					hint="A separate free-tier key — switch to it when you want daily quotas instead of paid balance."
-				>
-					<input
-						type="password"
-						value={freeApiKey}
-						onChange={(event) => onFreeApiKeyChange(event.target.value)}
-						placeholder="AIza..."
-						autoComplete="off"
-						className="w-full rounded-lg surface-input px-3 py-2 text-sm outline-none ring-ring focus:ring-2"
-					/>
-				</FieldGroup>
-
-				<p className="text-xs text-muted-foreground">
-					Get keys from{' '}
-					<a
-						href="https://aistudio.google.com/apikey"
-						target="_blank"
-						rel="noreferrer"
-						className="inline-flex items-center gap-1 text-primary hover:underline"
-					>
-						Google AI Studio
-						<ExternalLink className="h-3.5 w-3.5" />
-					</a>
-					. Keys never leave this device except when calling Gemini.
-				</p>
-
-				<div className="flex flex-wrap items-center gap-3">
-					<Button onClick={onSave} disabled={isSavingApiKey}>
-						<Save className="h-4 w-4" />
-						{isSavingApiKey ? 'Saving…' : 'Save keys'}
-					</Button>
-					<Button
-						variant="outline"
-						onClick={onValidate}
-						disabled={isValidating || !activeKeyDraft}
-					>
-						<PlugZap className="h-4 w-4" />
-						{isValidating ? 'Validating…' : 'Validate active key'}
-					</Button>
-					{savedApiKey ? (
-						<span className="text-sm text-primary">Keys saved</span>
-					) : null}
-				</div>
-
-				{validationMessage ? (
-					<p
-						className={
-							validationOk ? 'text-sm text-primary' : 'text-sm text-destructive'
-						}
-					>
-						{validationMessage}
-					</p>
-				) : null}
-			</section>
-
-			<section className="surface-panel space-y-3 rounded-xl p-5">
-				<h3 className="text-sm font-medium">Web search</h3>
-				<p className="text-sm text-muted-foreground">
-					Enable <span className="font-medium text-foreground">Web search</span>{' '}
-					from the + menu in chat. Gemini 3 includes about 5,000 search queries
-					per month free, then roughly $14 per 1,000 queries — billed per search
-					the model runs, not per chat message.
-				</p>
-			</section>
-
-			<section className="surface-panel space-y-4 rounded-xl p-5">
-				<h3 className="text-sm font-medium">Available models</h3>
-				<p className="text-sm text-muted-foreground">
-					Say &quot;generate an image of…&quot; or &quot;generate music&quot; and
-					the app uses your chosen model for that type.
-				</p>
-				<div className="space-y-4">
-					{(['chat', 'image', 'music'] as const).map((category) => (
-						<div key={category}>
-							<h4 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-								{MODEL_CATEGORY_LABELS[category]}
-							</h4>
-							<ul className="space-y-2">
-								{GEMINI_MODELS.filter((model) => model.category === category).map(
-									(model) => (
-										<li
-											key={model.id}
-											className="rounded-lg border border-border/60 bg-secondary/40 px-3 py-2 text-sm"
-										>
-											<p className="font-medium">{model.name}</p>
-											<p className="text-xs text-muted-foreground">
-												{model.id} — {model.description}
-											</p>
-										</li>
-									),
-								)}
-							</ul>
-						</div>
-					))}
-				</div>
-			</section>
+			<OllamaModelsList />
 		</div>
 	)
 }
+
 
 function VoiceTab({
 	ttsReadAloudMode,
@@ -999,10 +727,7 @@ function VoiceTab({
 					<h3 className="text-sm font-medium">Voice input</h3>
 				</div>
 				<p className="text-sm text-muted-foreground">
-					On desktop, the browser&apos;s speech recognition is used when
-					available. On Android and installed apps, a short clip is recorded and
-					transcribed with Gemini 3.6 Flash (always — independent of your chat
-					model).
+					On Android, voice input is not configured for local-only chat yet.
 				</p>
 				<p className="text-sm text-muted-foreground">
 					Tap the mic, speak, then tap Continue. If voice input fails in an
@@ -1017,8 +742,7 @@ function VoiceTab({
 					<h3 className="text-sm font-medium">Voice output</h3>
 				</div>
 				<p className="text-sm text-muted-foreground">
-					Gemini TTS reads replies aloud. Chat text is always shown — speech is
-					optional on top.
+					Read-aloud for assistant replies is not enabled in local-only mode.
 				</p>
 
 				<div className="space-y-2">
@@ -1039,8 +763,7 @@ function VoiceTab({
 					</select>
 					{ttsReadAloudMode === 'always' ? (
 						<p className="text-xs text-muted-foreground">
-							Always generates a separate TTS API call for every assistant reply,
-							which adds to your Gemini bill.
+							Always read aloud uses browser speech when available.
 						</p>
 					) : null}
 				</div>
@@ -1077,11 +800,7 @@ function VoiceTab({
 						</Button>
 					</div>
 					<p className="text-sm text-muted-foreground">
-						Uses{' '}
-						<span className="font-medium text-foreground">
-							gemini-3.1-flash-tts-preview
-						</span>{' '}
-						with streaming playback. Tap Listen on a reply for manual playback.
+						Preview uses browser speech synthesis when available.
 					</p>
 				</div>
 			</section>

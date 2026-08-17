@@ -133,7 +133,10 @@ export function useChatGeneration({
 			const abortController = new AbortController()
 			abortControllerRef.current = abortController
 
-			const modelId = conversation?.modelId ?? preferences.defaultModelId
+			const modelId =
+				conversation?.modelId ??
+				settings.activeModel ??
+				preferences.defaultModelId
 			let activeConversation = conversation
 			if (editFromMessageId) {
 				activeConversation = await truncateMessagesFrom(editFromMessageId)

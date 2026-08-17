@@ -1,12 +1,12 @@
 import { readFileSync, readdirSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import type Database from 'better-sqlite3'
+import type { PersonalAiDatabase } from './types.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
-export function runMigrations(db: Database.Database): void {
-	db.pragma('foreign_keys = ON')
+export function runMigrations(db: PersonalAiDatabase): void {
+	db.exec('PRAGMA foreign_keys = ON')
 
 	db.exec(`
 		CREATE TABLE IF NOT EXISTS schema_migrations (

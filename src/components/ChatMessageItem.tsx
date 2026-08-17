@@ -240,13 +240,18 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
 
               {/* Main Message Text / Markdown Body */}
               {message.content && (
-                <div className="prose prose-invert prose-slate max-w-none text-slate-100 text-sm leading-relaxed">
+                <div className="prose prose-invert prose-slate max-w-full min-w-0 text-slate-100 text-sm leading-relaxed">
                   {isUser ? (
-                    <p className="whitespace-pre-wrap">{message.content}</p>
+                    <p className="whitespace-pre-wrap break-words">{message.content}</p>
                   ) : (
                     <ReactMarkdown
                       remarkPlugins={[remarkGfm]}
                       components={{
+                        table: ({ children }) => (
+                          <div className="markdown-table-scroll">
+                            <table>{children}</table>
+                          </div>
+                        ),
                         code({ className, children, ...props }) {
                           const match = /language-(\w+)/.exec(className || '')
                           const lang = match ? match[1] : ''

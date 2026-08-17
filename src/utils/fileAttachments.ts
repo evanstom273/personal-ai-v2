@@ -1,6 +1,70 @@
 import mammoth from 'mammoth'
 import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist'
-import type { FileAttachment } from '../types/chat'
+import type { FileAttachment } from '../types/serverChat'
+
+export async function readTextFile(file: File): Promise<string> {
+	return file.text()
+}
+
+export async function readFileAsDataUrl(
+	file: File,
+): Promise<{ dataUrl: string; mimeType: string }> {
+	return new Promise((resolve, reject) => {
+		const reader = new FileReader()
+		reader.onload = () => {
+			if (typeof reader.result !== 'string') {
+				reject(new Error('Failed to read file'))
+				return
+			}
+
+			resolve({
+				dataUrl: reader.result,
+				mimeType: file.type || 'application/octet-stream',
+			})
+		}
+		reader.onerror = () => reject(new Error('Failed to read file'))
+		reader.readAsDataURL(file)
+	})
+}
+
+export function getFileBaseName(filename: string): string {
+	const trimmed = filename.trim()
+	const index = trimmed.lastIndexOf('.')
+	if (index <= 0) {
+		return trimmed
+	}
+
+	return trimmed.slice(0, index)
+}
+
+export function isPdfFile(file: File): boolean {
+	return file.type === 'application/pdf' || /\.pdf$/i.test(file.name)
+}
+
+export function isTextDocumentFile(file: File): boolean {
+	if (file.type.startsWith('text/')) {
+		return true
+	}
+
+	return /\.(txt|md|markdown|html|htm|json|csv|xml|yml|yaml)$/i.test(file.name)
+}
+
+export function isUploadableDocumentFile(file: File): boolean {
+	return isTextDocumentFile(file) || isPdfFile(file)
+}
+
+export async function readUploadableDocumentContent(file: File): Promise<string> {
+	if (isPdfFile(file)) {
+		const { extractPdfText } = await import('@/utils/pdfText')
+		return extractPdfText(file)
+	}
+
+	return readTextFile(file)
+}
+
+export function isImageFile(file: File): boolean {
+	return file.type.startsWith('image/')
+}
 
 GlobalWorkerOptions.workerSrc = new URL(
 	'pdfjs-dist/build/pdf.worker.min.mjs',
@@ -66,7 +130,7 @@ function readFileAsArrayBuffer(file: File): Promise<ArrayBuffer> {
 	})
 }
 
-function readFileAsDataUrl(file: File): Promise<string> {
+function readFileAsDataUrlString(file: File): Promise<string> {
 	return new Promise((resolve, reject) => {
 		const reader = new FileReader()
 		reader.onload = () => resolve(String(reader.result ?? ''))
@@ -146,7 +210,7 @@ export async function readFileAsAttachment(file: File): Promise<FileAttachment> 
 	}
 
 	if (category === 'image') {
-		const dataUrl = await readFileAsDataUrl(file)
+		const dataUrl = await readFileAsDataUrlString(file)
 		const base64 = dataUrl.includes(',') ? dataUrl.split(',')[1] : dataUrl
 		return {
 			name: file.name,

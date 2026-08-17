@@ -1,0 +1,232 @@
+export type StoreName =
+	| 'preferences'
+	| 'conversations'
+	| 'cache'
+	| 'documents'
+	| 'libraryMedia'
+	| 'memories'
+	| 'reminders'
+	| 'projects'
+
+export const PROJECT_TASK_STATUS_OPTIONS = ['todo', 'doing', 'done'] as const
+
+export type ProjectTaskStatus = (typeof PROJECT_TASK_STATUS_OPTIONS)[number]
+
+export type ProjectSource = 'user' | 'assistant'
+
+export interface ProjectChecklistItem {
+	id: string
+	label: string
+	checked: boolean
+}
+
+export interface ProjectTaskRecord {
+	id: string
+	title: string
+	note?: string
+	status: ProjectTaskStatus
+	position: number
+	checklist: ProjectChecklistItem[]
+	documentIds: string[]
+	reminderId?: string
+	createdAt: number
+	updatedAt: number
+}
+
+export interface ProjectRecord {
+	id: string
+	title: string
+	description?: string
+	documentIds: string[]
+	tasks: ProjectTaskRecord[]
+	source: ProjectSource
+	createdAt: number
+	updatedAt: number
+}
+
+export const REMINDER_RECURRENCE_OPTIONS = [
+	'none',
+	'daily',
+	'weekly',
+	'monthly',
+	'yearly',
+] as const
+
+export type ReminderRecurrence = (typeof REMINDER_RECURRENCE_OPTIONS)[number]
+
+export type ReminderSource = 'user' | 'assistant'
+
+export interface ReminderRecord {
+	id: string
+	title: string
+	note?: string
+	deliveryMessage?: string
+	scheduledAt: number
+	recurrence: ReminderRecurrence
+	enabled: boolean
+	source: ReminderSource
+	createdAt: number
+	updatedAt: number
+	lastFiredAt?: number
+}
+
+export type MemoryCategory =
+	| 'preference'
+	| 'fact'
+	| 'project'
+	| 'decision'
+	| 'other'
+
+export interface MemoryEntry {
+	id: string
+	content: string
+	category: MemoryCategory
+	archivedFromMessageCount: number
+	createdAt: number
+}
+
+export const MEMORY_ARCHIVE_INTERVAL_OPTIONS = [5, 10, 15, 20] as const
+
+export type MemoryArchiveInterval =
+	(typeof MEMORY_ARCHIVE_INTERVAL_OPTIONS)[number]
+
+export const TTS_READ_ALOUD_MODE_OPTIONS = [
+	'never',
+	'after_speech',
+	'always',
+] as const
+
+export type TtsReadAloudMode = (typeof TTS_READ_ALOUD_MODE_OPTIONS)[number]
+
+export type ChatInputMethod = 'typed' | 'speech'
+
+export type LibraryMediaKind = 'image' | 'audio'
+
+export interface LibraryMediaRecord {
+	id: string
+	title: string
+	kind: LibraryMediaKind
+	mimeType: string
+	dataUrl: string
+	source: 'upload' | 'generated'
+	prompt?: string
+	createdAt: number
+	updatedAt: number
+}
+
+export type GeminiApiKeySlot = 'paid' | 'free'
+
+export interface UserPreferences {
+	geminiApiKeyPaid: string
+	geminiApiKeyFree: string
+	activeGeminiApiKeySlot: GeminiApiKeySlot
+	defaultModelId: string
+	defaultImageModelId: string
+	defaultMusicModelId: string
+	userName: string
+	aiName: string
+	aiBehaviorInstructions: string
+	allowMatureContent: boolean
+	memoryArchiveInterval: MemoryArchiveInterval
+	ttsReadAloudMode: TtsReadAloudMode
+	ttsVoiceName: string
+	allowCodebaseInspection: boolean
+	scratchpadContent: string
+	enableFoldableDualPane: boolean
+	forceDualPaneMode: boolean
+	customHingeGap: number
+	dualPaneMinWidth: number
+	dualPaneSplitRatio: number
+}
+
+export const DEFAULT_PREFERENCES: UserPreferences = {
+	geminiApiKeyPaid: '',
+	geminiApiKeyFree: '',
+	activeGeminiApiKeySlot: 'paid',
+	defaultModelId: 'gemini-3.6-flash',
+	defaultImageModelId: 'gemini-3.1-flash-image',
+	defaultMusicModelId: 'lyria-3-clip-preview',
+	userName: '',
+	aiName: '',
+	aiBehaviorInstructions: '',
+	allowMatureContent: true,
+	memoryArchiveInterval: 20,
+	ttsReadAloudMode: 'never',
+	ttsVoiceName: 'Kore',
+	allowCodebaseInspection: false,
+	scratchpadContent: '',
+	enableFoldableDualPane: true,
+	forceDualPaneMode: false,
+	customHingeGap: 0,
+	dualPaneMinWidth: 900,
+	dualPaneSplitRatio: 50,
+}
+
+export interface DocumentRecord {
+	id: string
+	title: string
+	content: string
+	source: DocumentSource
+	contentFormat: DocumentContentFormat
+	readOnly: boolean
+	createdAt: number
+	updatedAt: number
+}
+
+export type DocumentSource = 'upload' | 'user' | 'assistant'
+
+export type DocumentContentFormat = 'markdown' | 'html'
+
+export interface HomeTodoItem {
+	id: string
+	text: string
+	checked: boolean
+	position: number
+	createdAt: number
+	updatedAt: number
+}
+
+export interface HomeTodoListState {
+	items: HomeTodoItem[]
+	dailyReviewReminderId?: string
+	updatedAt: number
+}
+
+export interface ConversationRecord {
+	id: string
+	title: string
+	modelId: string
+	messages: StoredMessage[]
+	memoryArchiveCursor: number
+	createdAt: number
+	updatedAt: number
+}
+
+export interface StoredMessage {
+	id: string
+	role: 'user' | 'assistant'
+	content: string
+	media?: MessageMedia[]
+	documentLinks?: MessageDocumentLink[]
+	pendingDeleteConfirmation?: PendingDeleteConfirmation
+	createdAt: number
+}
+
+export interface PendingDeleteConfirmation {
+	documentId: string
+	documentTitle: string
+}
+
+export interface MessageMedia {
+	type: 'image' | 'audio'
+	mimeType: string
+	dataUrl: string
+}
+
+export type MessageDocumentLinkAction = 'created' | 'updated'
+
+export interface MessageDocumentLink {
+	id: string
+	title: string
+	action: MessageDocumentLinkAction
+}

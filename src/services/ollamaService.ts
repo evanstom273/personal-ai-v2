@@ -1,4 +1,4 @@
-import type { LocalModel, ChatMessage, ChatSettings } from '../types/chat'
+import type { LocalModel, ChatMessage, ChatSettings } from '../types/serverChat'
 import {
 	buildOllamaApiUrl,
 	classifyOllamaHost,

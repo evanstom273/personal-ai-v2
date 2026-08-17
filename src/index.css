@@ -73,22 +73,19 @@
 
 html {
 	height: 100%;
-	height: 100dvh;
-	overflow: hidden;
 }
 
 @media (display-mode: standalone) {
 	:root {
+		/* Android PWA often reports 0 for safe-area-inset-bottom despite gesture nav bar */
 		--app-bottom-inset: max(env(safe-area-inset-bottom, 0px), 20px);
 	}
 }
 
 body {
 	margin: 0;
-	height: 100%;
-	height: 100dvh;
-	min-height: 100dvh;
-	max-height: 100dvh;
+	height: 100svh;
+	max-height: 100svh;
 	overflow: hidden;
 	background-color: var(--background);
 	background-image:
@@ -109,22 +106,18 @@ body {
 		Arial,
 		sans-serif;
 	-webkit-font-smoothing: antialiased;
-	overscroll-behavior: none;
 }
 
 #root {
-	height: 100%;
-	height: 100dvh;
-	min-height: 100dvh;
+	height: 100svh;
+	max-height: 100svh;
 	overflow: hidden;
 }
 
 .app-shell {
 	position: relative;
-	height: 100%;
-	height: 100dvh;
-	min-height: 100dvh;
-	max-height: 100dvh;
+	height: 100svh;
+	max-height: 100svh;
 	background: transparent;
 }
 
@@ -141,6 +134,15 @@ body {
 .app-shell > * {
 	position: relative;
 	z-index: 1;
+}
+
+.swipe-nav-transition {
+	opacity: 1;
+	transition: opacity 100ms ease;
+}
+
+.swipe-nav-transition-fading {
+	opacity: 0;
 }
 
 .surface-panel {
@@ -291,12 +293,33 @@ body {
 	letter-spacing: 0.01em;
 }
 
+.library-section-tabs {
+	background:
+		linear-gradient(180deg, rgb(255 255 255 / 2%) 0%, transparent 100%),
+		rgb(18 21 30 / 82%);
+	box-shadow: inset 0 1px 0 rgb(255 255 255 / 2%);
+}
+
+.library-section-tabs .surface-tab-active {
+	background:
+		linear-gradient(180deg, rgb(255 255 255 / 3%) 0%, transparent 100%),
+		linear-gradient(135deg, rgb(54 152 255 / 4%) 0%, transparent 52%),
+		var(--card);
+	box-shadow:
+		0 6px 16px rgb(0 0 0 / 24%),
+		inset 0 1px 0 rgb(255 255 255 / 3%);
+}
+
 .home-hero-icon {
 	background:
 		linear-gradient(135deg, rgb(54 152 255 / 16%) 0%, rgb(54 152 255 / 5%) 100%);
 	box-shadow:
 		0 0 32px rgb(54 152 255 / 10%),
 		inset 0 1px 0 rgb(255 255 255 / 6%);
+}
+
+.home-hero-glow {
+	box-shadow: 0 0 40px rgb(54 152 255 / 10%);
 }
 
 .home-placeholder-card,
@@ -311,45 +334,91 @@ body {
 		inset 0 1px 0 rgb(255 255 255 / 3%);
 }
 
-.btn-primary {
-	background: linear-gradient(to bottom, var(--primary), #2d86eb);
-	color: var(--primary-foreground);
-	box-shadow:
-		0 8px 20px rgb(54 152 255 / 28%),
-		inset 0 1px 0 rgb(255 255 255 / 20%);
+.document-editor-content {
+	line-height: 1.7;
 }
 
-.btn-primary:hover:not(:disabled) {
-	background: linear-gradient(to bottom, rgb(54 152 255 / 95%), rgb(45 134 235 / 95%));
+.document-editor-content h1,
+.document-editor-content h2,
+.document-editor-content h3,
+.document-editor-content h4 {
+	font-weight: 600;
+	margin: 1.25rem 0 0.75rem;
 }
 
-.btn-ghost {
+.document-editor-content h1 {
+	font-size: 1.75rem;
+}
+
+.document-editor-content h2 {
+	font-size: 1.375rem;
+}
+
+.document-editor-content h3 {
+	font-size: 1.125rem;
+}
+
+.document-editor-content h4 {
+	font-size: 1rem;
+}
+
+.document-editor-content hr {
+	margin: 1.5rem 0;
+	border: none;
+	border-top: 1px solid var(--border);
+}
+
+.document-editor-content mark {
+	border-radius: 0.125rem;
+	padding: 0.05em 0.15em;
+}
+
+.document-editor-content p {
+	margin: 0.75rem 0;
+}
+
+.document-editor-content ul,
+.document-editor-content ol {
+	margin: 0.75rem 0;
+	padding-left: 1.5rem;
+}
+
+.document-editor-content ul {
+	list-style: disc;
+}
+
+.document-editor-content ol {
+	list-style: decimal;
+}
+
+.document-editor-content blockquote {
+	margin: 1rem 0;
+	border-left: 3px solid var(--border);
+	padding-left: 1rem;
 	color: var(--muted-foreground);
-	transition: color 150ms ease, background-color 150ms ease;
 }
 
-.btn-ghost:hover:not(:disabled) {
-	color: var(--foreground);
-	background-color: var(--accent);
+.document-editor-content a {
+	color: var(--primary);
+	text-decoration: underline;
+	text-underline-offset: 4px;
 }
 
-::-webkit-scrollbar {
-	width: 5px;
-	height: 5px;
+.document-editor-content p.is-editor-empty:first-child::before {
+	color: var(--muted-foreground);
+	content: attr(data-placeholder);
+	float: left;
+	height: 0;
+	pointer-events: none;
 }
 
-::-webkit-scrollbar-track {
-	background: transparent;
+.document-editor-toolbar {
+	-webkit-overflow-scrolling: touch;
+	scrollbar-width: none;
 }
 
-::-webkit-scrollbar-thumb {
-	background: var(--border);
-	border-radius: 9999px;
-}
-
-.hljs {
-	background: transparent !important;
-	padding: 0 !important;
+.document-editor-toolbar::-webkit-scrollbar {
+	display: none;
 }
 
 .chat-message-content {
@@ -459,12 +528,47 @@ body {
 	box-shadow: inset 0 1px 0 rgb(255 255 255 / 2%);
 }
 
+.chat-code-block-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	border-bottom: 1px solid var(--border);
+	background: rgb(0 0 0 / 22%);
+	padding: 0.375rem 0.75rem;
+	font-size: 0.75rem;
+	color: var(--muted-foreground);
+	text-transform: lowercase;
+}
+
+.chat-copy-button {
+	border-radius: 0.375rem;
+	opacity: 0.9;
+	transition: opacity 150ms ease, background-color 150ms ease, color 150ms ease;
+}
+
+@media (hover: hover) {
+	.chat-code-block .chat-copy-button {
+		opacity: 0.75;
+	}
+	.chat-code-block:hover .chat-copy-button,
+	.chat-code-block .chat-copy-button:focus-visible,
+	.chat-code-block .chat-copy-button:active {
+		opacity: 1;
+	}
+}
+
 .chat-code-block pre {
 	margin: 0;
 	overflow-x: auto;
 	padding: 1rem;
 	font-size: 0.8125rem;
 	line-height: 1.6;
+}
+
+.chat-code-block pre code {
+	background: transparent;
+	padding: 0;
+	font-size: inherit;
 }
 
 .chat-markdown table {
@@ -490,17 +594,4 @@ body {
 
 .chat-markdown strong {
 	font-weight: 600;
-}
-
-.chat-markdown a {
-	color: var(--primary);
-}
-
-.markdown-table-scroll {
-	max-width: 100%;
-	overflow-x: auto;
-	margin-top: 1em;
-	margin-bottom: 1em;
-	border-radius: 0.5rem;
-	border: 1px solid var(--border);
 }

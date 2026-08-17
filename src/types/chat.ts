@@ -1,69 +1,29 @@
-export type Role = 'user' | 'assistant' | 'system'
+import type { ChatInputMethod } from '@/storage/types'
 
-export interface ChatMessage {
-  id: string
-  role: Role
-  content: string
-  thinkingContent?: string
-  timestamp: number
-  model?: string
-  tokensPerSec?: number
-  durationMs?: number
-  isError?: boolean
-  fileAttachments?: FileAttachment[]
+export type ChatAttachment =
+	| {
+			id: string
+			type: 'document'
+			name: string
+			documentId?: string
+			dataUrl?: string
+			mimeType?: string
+	  }
+	| {
+			id: string
+			type: 'image'
+			name: string
+			documentId?: string
+			dataUrl?: string
+			mimeType?: string
+	  }
+
+export interface ChatSubmitPayload {
+	text: string
+	attachments: ChatAttachment[]
+	webSearchEnabled: boolean
+	inputMethod: ChatInputMethod
+	editFromMessageId?: string
 }
 
-export interface FileAttachment {
-  name: string
-  size: number
-  content: string
-  type: string
-  kind: 'image' | 'text'
-}
-
-export interface ChatSession {
-  id: string
-  title: string
-  createdAt: number
-  updatedAt: number
-  messages: ChatMessage[]
-  model: string
-  systemPrompt?: string
-}
-
-export interface ModelDetails {
-  parent_model?: string
-  format?: string
-  family?: string
-  families?: string[]
-  parameter_size?: string
-  quantization_level?: string
-  context_length?: number
-  embedding_length?: number
-}
-
-export interface LocalModel {
-  name: string
-  model: string
-  modified_at?: string
-  size: number
-  digest: string
-  details?: ModelDetails
-  capabilities?: string[]
-}
-
-export interface ChatSettings {
-  systemPrompt: string
-  temperature: number
-  topP: number
-  maxTokens: number
-  contextWindow: number
-  theme: 'dark' | 'light' | 'system'
-  ollamaHost: string
-  personalaiHost: string
-  tailscaleMachine: string
-  tailscaleTailnet: string
-  autoScroll: boolean
-  enableThinking: boolean
-  activeModel: string
-}
+export type { ChatInputMethod }

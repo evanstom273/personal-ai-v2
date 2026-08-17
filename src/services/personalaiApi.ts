@@ -1,4 +1,4 @@
-import type { ChatMessage, ChatSession, ChatSettings, FileAttachment } from '../types/chat'
+import type { ChatMessage, ChatSession, ChatSettings, FileAttachment } from '../types/serverChat'
 import {
 	buildPersonalaiApiUrl,
 	buildPersonalaiHealthUrl,

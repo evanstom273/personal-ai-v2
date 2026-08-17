@@ -1,19 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { Send, Square, X, FileText, Plus, Paperclip, Sparkles, Brain, Zap, ChevronRight } from 'lucide-react'
-import type { LocalModel, ChatSettings } from '../types/chat'
+import { Send, Square, X, FileText, Plus, Paperclip, Sparkles, Brain, Zap, ChevronRight, Loader2 } from 'lucide-react'
+import type { FileAttachment, LocalModel, ChatSettings } from '../types/chat'
 import { ModelPickerList } from './ModelPicker'
-
-interface AttachedFile {
-	name: string
-	size: number
-	content: string
-	type: string
-}
+import { readFileAsAttachment } from '../utils/fileAttachments'
 
 type MenuView = 'main' | 'models'
 
 interface ChatInputProps {
-	onSendMessage: (text: string, files: AttachedFile[]) => void
+	onSendMessage: (text: string, files: FileAttachment[]) => void
 	isStreaming: boolean
 	onStopStreaming: () => void
 	selectedModel: string
@@ -36,7 +30,9 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 	disabled = false,
 }) => {
 	const [input, setInput] = useState('')
-	const [attachments, setAttachments] = useState<AttachedFile[]>([])
+	const [attachments, setAttachments] = useState<FileAttachment[]>([])
+	const [uploadError, setUploadError] = useState('')
+	const [isReadingFiles, setIsReadingFiles] = useState(false)
 	const [menuOpen, setMenuOpen] = useState(false)
 	const [menuView, setMenuView] = useState<MenuView>('main')
 	const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -72,39 +68,38 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 	}
 
 	const handleSubmit = () => {
-		if ((!input.trim() && attachments.length === 0) || isStreaming || disabled) {
+		if ((!input.trim() && attachments.length === 0) || isStreaming || disabled || isReadingFiles) {
 			return
 		}
 
 		onSendMessage(input.trim(), attachments)
 		setInput('')
 		setAttachments([])
+		setUploadError('')
 
 		if (textareaRef.current) {
 			textareaRef.current.style.height = 'auto'
 		}
 	}
 
-	const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+	const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
 		const files = e.target.files
-		if (!files) return
+		if (!files || files.length === 0) return
 
-		Array.from(files).forEach((file) => {
-			const reader = new FileReader()
-			reader.onload = (event) => {
-				const content = event.target?.result as string
-				setAttachments((prev) => [
-					...prev,
-					{
-						name: file.name,
-						size: file.size,
-						content,
-						type: file.type || 'text/plain',
-					},
-				])
+		setIsReadingFiles(true)
+		setUploadError('')
+
+		for (const file of Array.from(files)) {
+			try {
+				const attachment = await readFileAsAttachment(file)
+				setAttachments((prev) => [...prev, attachment])
+			} catch (err) {
+				const message = err instanceof Error ? err.message : 'Failed to read file'
+				setUploadError(message)
 			}
-			reader.readAsText(file)
-		})
+		}
+
+		setIsReadingFiles(false)
 
 		if (fileInputRef.current) {
 			fileInputRef.current.value = ''
@@ -133,6 +128,12 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 		<div className="shrink-0 w-full border-t border-slate-800/70 bg-slate-950/95 backdrop-blur-xl pb-[env(safe-area-inset-bottom)]">
 			<div className="w-full max-w-3xl mx-auto px-3 pt-2 pb-3">
 				<div className="relative rounded-2xl bg-slate-900/90 border border-slate-800 focus-within:border-cyan-500/50 shadow-2xl shadow-black/80 transition-all">
+					{uploadError && (
+						<div className="px-3 pt-3 text-[11px] text-rose-300 bg-rose-500/10 border-b border-rose-500/20">
+							{uploadError}
+						</div>
+					)}
+
 					{attachments.length > 0 && (
 						<div className="flex flex-wrap gap-2 p-3 pb-0 border-b border-slate-800/60">
 							{attachments.map((file, idx) => (
@@ -140,9 +141,9 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 									key={idx}
 									className="inline-flex items-center gap-2 px-3 py-1 rounded-xl bg-slate-800 text-xs text-slate-200 border border-slate-700"
 								>
-									<FileText className="w-3.5 h-3.5 text-cyan-400" />
+									<FileText className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
 									<span className="font-medium max-w-[150px] truncate">{file.name}</span>
-									<span className="text-[10px] text-slate-400">
+									<span className="text-[10px] text-slate-400 shrink-0">
 										({Math.round(file.size / 1024)} KB)
 									</span>
 									<button
@@ -163,6 +164,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 							ref={fileInputRef}
 							onChange={handleFileUpload}
 							multiple
+							accept=".png,.jpg,.jpeg,.gif,.webp,.bmp,.txt,.md,.markdown,.json,.csv,.xml,.html,.css,.js,.ts,.tsx,.jsx,.py,.yaml,.yml,.log,.sql,.pdf,.docx,text/*,image/*,application/json,application/pdf"
 							className="hidden"
 						/>
 
@@ -193,9 +195,14 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 												type="button"
 												role="menuitem"
 												onClick={() => fileInputRef.current?.click()}
-												className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-slate-200 hover:bg-slate-800/70 transition-colors"
+												disabled={isReadingFiles}
+												className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-slate-200 hover:bg-slate-800/70 transition-colors disabled:opacity-60"
 											>
-												<Paperclip className="w-4 h-4 text-slate-400" />
+												{isReadingFiles ? (
+													<Loader2 className="w-4 h-4 text-slate-400 animate-spin" />
+												) : (
+													<Paperclip className="w-4 h-4 text-slate-400" />
+												)}
 												<span>Attach file</span>
 											</button>
 
@@ -264,7 +271,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 							onChange={(e) => setInput(e.target.value)}
 							onKeyDown={handleKeyDown}
 							placeholder={`Message ${selectedModel}...`}
-							disabled={disabled}
+							disabled={disabled || isReadingFiles}
 							rows={1}
 							className="w-full min-w-0 bg-transparent border-0 text-slate-100 placeholder-slate-400 text-sm focus:outline-none focus:ring-0 resize-none px-2 py-1 max-h-48 scrollbar-thin scrollbar-thumb-slate-800"
 						/>
@@ -283,15 +290,21 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 								<button
 									type="button"
 									onClick={handleSubmit}
-									disabled={!input.trim() && attachments.length === 0}
+									disabled={
+										isReadingFiles || (!input.trim() && attachments.length === 0)
+									}
 									className={`p-2.5 rounded-xl transition-all flex items-center justify-center cursor-pointer ${
-										input.trim() || attachments.length > 0
+										!isReadingFiles && (input.trim() || attachments.length > 0)
 											? 'bg-gradient-to-tr from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white shadow-md shadow-cyan-500/25 active:scale-95'
 											: 'bg-slate-800 text-slate-500 cursor-not-allowed'
 									}`}
 									title="Send message (Enter)"
 								>
-									<Send className="w-4 h-4" />
+									{isReadingFiles ? (
+										<Loader2 className="w-4 h-4 animate-spin" />
+									) : (
+										<Send className="w-4 h-4" />
+									)}
 								</button>
 							)}
 						</div>

@@ -1,4 +1,11 @@
 import type { LocalModel, ChatMessage, ChatSettings } from '../types/chat'
+import {
+	buildOllamaApiUrl,
+	classifyOllamaHost,
+	getConnectionHint,
+	getEndpointLabel,
+	type OllamaEndpointKind,
+} from '../utils/ollamaEndpoint'
 
 export const DEFAULT_SETTINGS: ChatSettings = {
   systemPrompt: 'You are a helpful, intelligent, and precise AI assistant powered by local models.',
@@ -8,6 +15,8 @@ export const DEFAULT_SETTINGS: ChatSettings = {
   contextWindow: 4096,
   theme: 'dark',
   ollamaHost: '',
+  tailscaleMachine: '',
+  tailscaleTailnet: '',
   autoScroll: true,
   enableThinking: true,
 }
@@ -54,9 +63,103 @@ export const FALLBACK_MODELS: LocalModel[] = [
   },
 ]
 
+export interface OllamaConnectionTestResult {
+  ok: boolean
+  latencyMs: number
+  modelCount?: number
+  modelNames?: string[]
+  models?: LocalModel[]
+  error?: string
+  hint?: string
+  endpointKind: OllamaEndpointKind
+  endpointLabel: string
+  endpointUrl: string
+}
+
+function getFetchErrorHint(kind: OllamaEndpointKind, isHttpsApp: boolean): string {
+  if (kind === 'tailscale-serve') {
+    return 'Check Tailscale is connected on both devices, Serve is running, and OLLAMA_ORIGINS includes this app URL.'
+  }
+  if (kind === 'tailscale-ip') {
+    return getConnectionHint(kind, isHttpsApp) || 'Use Tailscale Serve with HTTPS instead of a 100.x IP.'
+  }
+  if (kind === 'vite-proxy' && isHttpsApp) {
+    return 'Set a full Ollama URL (Tailscale Serve, tunnel, or LAN) — the local Vite proxy is not available on hosted deployments.'
+  }
+  return 'Verify Ollama is running, the URL is correct, and CORS allows this app origin.'
+}
+
+export async function testOllamaConnection(host: string): Promise<OllamaConnectionTestResult> {
+  const endpointKind = classifyOllamaHost(host)
+  const endpointUrl = buildOllamaApiUrl(host, '/api/tags')
+  const endpointLabel = getEndpointLabel(endpointKind)
+  const isHttpsApp = window.location.protocol === 'https:'
+  const mixedContentHint = getConnectionHint(endpointKind, isHttpsApp)
+
+  if (mixedContentHint && endpointKind === 'tailscale-ip') {
+    return {
+      ok: false,
+      latencyMs: 0,
+      endpointKind,
+      endpointLabel,
+      endpointUrl,
+      error: 'Mixed content blocked by browser',
+      hint: mixedContentHint,
+    }
+  }
+
+  const start = performance.now()
+
+  try {
+    const res = await fetch(endpointUrl)
+    const latencyMs = Math.round(performance.now() - start)
+
+    if (!res.ok) {
+      const body = await res.text().catch(() => '')
+      return {
+        ok: false,
+        latencyMs,
+        endpointKind,
+        endpointLabel,
+        endpointUrl,
+        error: `HTTP ${res.status}${body ? `: ${body.slice(0, 160)}` : ''}`,
+        hint: getFetchErrorHint(endpointKind, isHttpsApp),
+      }
+    }
+
+    const data = await res.json()
+    const models: LocalModel[] = Array.isArray(data.models) ? data.models : []
+    const modelNames = models.map((m) => m.name)
+
+    return {
+      ok: true,
+      latencyMs,
+      modelCount: models.length,
+      modelNames,
+      models,
+      endpointKind,
+      endpointLabel,
+      endpointUrl,
+      hint: getConnectionHint(endpointKind, isHttpsApp),
+    }
+  } catch (err) {
+    const latencyMs = Math.round(performance.now() - start)
+    const message = err instanceof Error ? err.message : String(err)
+
+    return {
+      ok: false,
+      latencyMs,
+      endpointKind,
+      endpointLabel,
+      endpointUrl,
+      error: message,
+      hint: mixedContentHint || getFetchErrorHint(endpointKind, isHttpsApp),
+    }
+  }
+}
+
 export async function fetchLocalModels(host = ''): Promise<LocalModel[]> {
-  const baseUrl = host ? host.replace(/\/$/, '') : ''
-  const endpoint = `${baseUrl}/api/tags`
+  const endpoint = buildOllamaApiUrl(host, '/api/tags')
 
   try {
     const res = await fetch(endpoint)
@@ -100,8 +203,7 @@ export async function streamChatCompletion(
   callbacks: StreamCallbacks,
   signal?: AbortSignal
 ): Promise<void> {
-  const baseUrl = settings.ollamaHost ? settings.ollamaHost.replace(/\/$/, '') : ''
-  const endpoint = `${baseUrl}/api/chat`
+  const endpoint = buildOllamaApiUrl(settings.ollamaHost, '/api/chat')
 
   // Format messages for Ollama API
   const formattedMessages: { role: string; content: string }[] = []

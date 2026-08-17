@@ -18,6 +18,7 @@ import { DEFAULT_SETTINGS, testOllamaConnection } from '../services/ollamaServic
 import {
 	buildTailscaleServeUrl,
 	classifyOllamaHost,
+	getEndpointLabel,
 	isTailscaleServeUrl,
 	parseTailscaleServeUrl,
 } from '../utils/ollamaEndpoint'
@@ -167,7 +168,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 					</button>
 				</div>
 
-				<form onSubmit={handleSave} className="flex-1 overflow-y-auto p-5 space-y-6 text-xs">
+				<form onSubmit={handleSave} className="flex flex-col flex-1 min-h-0">
+					<div className="flex-1 overflow-y-auto p-5 space-y-6 text-xs">
 					<div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center justify-between">
 						<div className="flex items-center gap-3">
 							<HardDrive className="w-5 h-5 text-cyan-400 shrink-0" />
@@ -434,12 +436,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
 					{endpointKind !== 'vite-proxy' && (
 						<p className="text-[11px] text-slate-500">
-							Endpoint type: <span className="text-slate-300">{endpointKind}</span>
+							Endpoint type: <span className="text-slate-300">{getEndpointLabel(endpointKind)}</span>
 						</p>
 					)}
-				</form>
+					</div>
 
-				<div className="p-4 border-t border-slate-800 bg-slate-900/60 flex items-center justify-between">
+					<div className="p-4 border-t border-slate-800 bg-slate-900/60 flex items-center justify-between shrink-0">
 					<button
 						type="button"
 						onClick={handleReset}
@@ -459,6 +461,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 						</button>
 						<button
 							type="submit"
+							onClick={(e) => {
+								e.preventDefault()
+								handleSave(e)
+							}}
 							className="flex items-center gap-2 px-5 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold transition-all shadow-md shadow-cyan-500/20"
 						>
 							{saved ? (
@@ -471,7 +477,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 							)}
 						</button>
 					</div>
-				</div>
+					</div>
+				</form>
 			</div>
 		</div>
 	)

@@ -422,7 +422,7 @@ function App() {
 
   return (
     <div
-      className={`min-h-screen flex bg-slate-950 text-slate-100 font-sans selection:bg-cyan-500/30 selection:text-cyan-200 ${
+      className={`h-dvh min-h-dvh flex overflow-hidden bg-slate-950 text-slate-100 font-sans selection:bg-cyan-500/30 selection:text-cyan-200 ${
         settings.theme === 'light' ? 'theme-light' : ''
       }`}
     >
@@ -442,14 +442,10 @@ function App() {
       />
 
       {/* Main View Area */}
-      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden relative">
-        {/* Top Header */}
+      <div className="flex-1 flex flex-col min-w-0 min-h-0 h-full overflow-hidden">
         <Header
           sidebarOpen={sidebarOpen}
           setSidebarOpen={setSidebarOpen}
-          models={models}
-          selectedModel={selectedModel}
-          onSelectModel={handleSelectModel}
           onNewChat={() => createNewSession()}
           onOpenSettings={() => setSettingsOpen(true)}
           onClearCurrentChat={handleClearCurrentChat}
@@ -458,8 +454,7 @@ function App() {
           hasMessages={messages.length > 0}
         />
 
-        {/* Conversation Stream or Welcome Screen */}
-        <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-800 flex flex-col">
+        <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-800 flex flex-col">
           {messages.length === 0 ? (
             <WelcomeScreen
               models={models}
@@ -484,12 +479,15 @@ function App() {
           )}
         </div>
 
-        {/* Floating Input Dock */}
         <ChatInput
           onSendMessage={handleSendMessage}
           isStreaming={isStreaming}
           onStopStreaming={handleStopStreaming}
           selectedModel={selectedModel}
+          models={models}
+          onSelectModel={handleSelectModel}
+          settings={settings}
+          onUpdateSettings={(newSettings) => setSettings({ ...settings, ...newSettings })}
         />
       </div>
 

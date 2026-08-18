@@ -28,8 +28,9 @@ import {
 	Undo,
 } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
-import { DocumentAiAskDialog } from '@/components/documents/DocumentAiAskDialog'
+import { WikiLinkAutocomplete } from '@/components/knowledge/WikiLinkAutocomplete'
 import { DocumentAiPreviewDialog } from '@/components/documents/DocumentAiPreviewDialog'
+import { DocumentAiAskDialog } from '@/components/documents/DocumentAiAskDialog'
 import { Button } from '@/components/ui/button'
 import {
 	DropdownMenu,
@@ -186,6 +187,7 @@ export function DocumentEditor({
 
 	return (
 		<div className={cn('flex min-h-0 flex-1 flex-col overflow-hidden', className)}>
+			<WikiLinkAutocomplete editor={editor} enabled={editable} />
 			<div className="shrink-0 border-b border-border/40 bg-card/20 px-4 py-2 backdrop-blur-sm md:px-6">
 				<div className="inline-flex items-center gap-2.5 rounded-full border border-border/50 bg-secondary/50 px-3 py-1 text-xs font-medium text-muted-foreground shadow-xs">
 					<span className="inline-flex items-center gap-1.5">

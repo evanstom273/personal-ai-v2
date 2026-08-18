@@ -83,6 +83,8 @@ export interface MemoryEntry {
 	category: MemoryCategory
 	archivedFromMessageCount: number
 	createdAt: number
+	updatedAt?: number
+	archived?: boolean
 }
 
 export const MEMORY_ARCHIVE_INTERVAL_OPTIONS = [5, 10, 15, 20] as const
@@ -177,6 +179,10 @@ export interface DocumentRecord {
 	archived?: boolean
 	dailyNoteDate?: string
 	lastEditedBy?: 'user' | 'assistant'
+	livingNoteMode?: 'off' | 'suggest' | 'automatic'
+	livingNoteLastConsolidatedAt?: number
+	livingNotePendingContent?: string | null
+	livingNotePendingSummary?: string | null
 }
 
 export interface KnowledgeCollection {

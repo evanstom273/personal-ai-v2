@@ -104,7 +104,17 @@ export async function updateKnowledgeNote(
 	updates: Partial<
 		Pick<
 			DocumentRecord,
-			'title' | 'content' | 'collectionId' | 'pinned' | 'archived' | 'tags' | 'lastEditedBy'
+			| 'title'
+			| 'content'
+			| 'collectionId'
+			| 'pinned'
+			| 'archived'
+			| 'tags'
+			| 'lastEditedBy'
+			| 'livingNoteMode'
+			| 'livingNotePendingContent'
+			| 'livingNotePendingSummary'
+			| 'livingNoteLastConsolidatedAt'
 		>
 	> & { saveRevision?: boolean },
 ): Promise<DocumentRecord> {
@@ -120,6 +130,10 @@ export async function updateKnowledgeNote(
 			tags: updates.tags,
 			editor: updates.lastEditedBy,
 			saveRevision: updates.saveRevision,
+			livingNoteMode: updates.livingNoteMode,
+			livingNotePendingContent: updates.livingNotePendingContent,
+			livingNotePendingSummary: updates.livingNotePendingSummary,
+			livingNoteLastConsolidatedAt: updates.livingNoteLastConsolidatedAt,
 		}),
 	})
 	if (!res.ok) throw new Error(await parseError(res))
@@ -196,6 +210,14 @@ export async function exportKnowledgeNoteMarkdown(noteId: string): Promise<strin
 	return await res.text()
 }
 
-export function isKnowledgeServerConfigured(): boolean {
-	return Boolean(getHost().trim())
+export async function downloadKnowledgeVaultZip(): Promise<Blob> {
+	const res = await fetch(knowledgeUrl('/export/vault'))
+	if (!res.ok) throw new Error(await parseError(res))
+	return await res.blob()
+}
+
+export async function downloadKnowledgeCollectionZip(collectionId: string): Promise<Blob> {
+	const res = await fetch(knowledgeUrl(`/export/collection/${collectionId}`))
+	if (!res.ok) throw new Error(await parseError(res))
+	return await res.blob()
 }

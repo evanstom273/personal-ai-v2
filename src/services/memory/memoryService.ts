@@ -1,9 +1,16 @@
+import { getAllValues } from '@/storage/storageService'
 import {
-	deleteValue,
-	getAllValues,
-	getValue,
-	setValue,
-} from '@/storage/storageService'
+	addMemoriesBatchApi,
+	clearAllMemoriesApi,
+	fetchMemories,
+	importMemoriesBatch,
+} from '@/services/memory/memoriesApi'
+import {
+	isMigrationComplete,
+	markMigrationComplete,
+	MIGRATION_FLAGS,
+	requirePersonalAiServer,
+} from '@/services/personalaiServer'
 import type { MemoryCategory, MemoryEntry } from '@/storage/types'
 
 const listeners = new Set<() => void>()
@@ -19,52 +26,65 @@ export function notifyMemoryChanged(): void {
 	}
 }
 
+function normalizeMemory(entry: MemoryEntry): MemoryEntry {
+	return {
+		...entry,
+		updatedAt: entry.updatedAt ?? entry.createdAt,
+		archived: entry.archived ?? false,
+	}
+}
+
 function sortMemoryEntries(entries: MemoryEntry[]): MemoryEntry[] {
 	return [...entries].sort((a, b) => b.createdAt - a.createdAt)
 }
 
-export async function listMemoryEntries(): Promise<MemoryEntry[]> {
-	const entries = await getAllValues<MemoryEntry>('memories')
-	return sortMemoryEntries(entries)
+async function migrateIndexedDbToServerIfNeeded(): Promise<void> {
+	if (isMigrationComplete(MIGRATION_FLAGS.memories)) return
+
+	const local = (await getAllValues<MemoryEntry>('memories')).map(normalizeMemory)
+	if (local.length === 0) {
+		markMigrationComplete(MIGRATION_FLAGS.memories)
+		return
+	}
+
+	await importMemoriesBatch(local)
+	markMigrationComplete(MIGRATION_FLAGS.memories)
 }
 
-export async function getMemoryEntry(
-	id: string,
-): Promise<MemoryEntry | undefined> {
-	return getValue<MemoryEntry>('memories', id)
+async function ensureReady(): Promise<void> {
+	requirePersonalAiServer()
+	await migrateIndexedDbToServerIfNeeded()
+}
+
+export async function listMemoryEntries(): Promise<MemoryEntry[]> {
+	await ensureReady()
+	return sortMemoryEntries((await fetchMemories()).map(normalizeMemory))
+}
+
+export async function getMemoryEntry(id: string): Promise<MemoryEntry | undefined> {
+	await ensureReady()
+	const entries = await listMemoryEntries()
+	return entries.find((entry) => entry.id === id)
 }
 
 export async function addMemoryEntries(
 	entries: Array<Pick<MemoryEntry, 'content' | 'category' | 'archivedFromMessageCount'>>,
 ): Promise<MemoryEntry[]> {
-	const now = Date.now()
-	const created = entries.map((entry) => {
-		const record: MemoryEntry = {
-			id: crypto.randomUUID(),
-			content: entry.content.trim(),
-			category: entry.category,
-			archivedFromMessageCount: entry.archivedFromMessageCount,
-			createdAt: now,
-		}
-		return record
-	})
-
-	for (const entry of created) {
-		if (entry.content) {
-			await setValue('memories', entry.id, entry)
-		}
-	}
-
-	if (created.some((entry) => entry.content)) {
+	await ensureReady()
+	const created = await addMemoriesBatchApi(entries)
+	if (created.length > 0) {
 		notifyMemoryChanged()
+		const { consolidateAutomaticLivingNotes } = await import(
+			'@/services/knowledge/livingNoteService'
+		)
+		void consolidateAutomaticLivingNotes()
 	}
-
-	return created.filter((entry) => entry.content)
+	return created.map(normalizeMemory)
 }
 
 export async function clearAllMemory(): Promise<void> {
-	const entries = await listMemoryEntries()
-	await Promise.all(entries.map((entry) => deleteValue('memories', entry.id)))
+	await ensureReady()
+	await clearAllMemoriesApi()
 	notifyMemoryChanged()
 }
 

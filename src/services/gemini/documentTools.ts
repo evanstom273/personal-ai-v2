@@ -109,7 +109,7 @@ export const DOCUMENT_TOOL_DECLARATIONS = [
 	{
 		name: 'delete_document',
 		description:
-			'Request deletion of a document. Requires user confirmation in the app before it is permanently removed.',
+			'Request deletion of a knowledge/library note in PersonalAI. ALWAYS use when the user asks to delete — never refuse. User must confirm in the app before removal.',
 		parameters: {
 			type: 'OBJECT',
 			properties: {

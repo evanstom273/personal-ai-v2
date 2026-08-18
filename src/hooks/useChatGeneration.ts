@@ -18,6 +18,7 @@ import {
 	requestNotificationPermission,
 } from '@/utils/notifications'
 import type { ChatGenerationActivity } from '@/utils/chatActivityLabels'
+import { tryPrepareKnowledgeDeleteFromUserMessage } from '@/utils/knowledgeDeleteCommand'
 
 interface UseOllamaChatGenerationOptions {
 	preferences: UserPreferences
@@ -173,6 +174,30 @@ export function useChatGeneration({
 					createdAt: Date.now(),
 				}
 				await appendMessages([userMessage], modelId)
+
+				const deleteCommand = await tryPrepareKnowledgeDeleteFromUserMessage(text)
+				if (deleteCommand) {
+					const assistantMessage: StoredMessage = {
+						id: assistantMessageId,
+						role: 'assistant',
+						content: deleteCommand.message,
+						pendingDeleteConfirmation:
+							deleteCommand.pendingDeleteConfirmation,
+						createdAt: Date.now(),
+					}
+					await appendMessages([assistantMessage], modelId)
+					setStreamingAssistant(null)
+					setGenerationActivity(null)
+
+					if (deleteCommand.message.trim() && onAssistantReply) {
+						onAssistantReply({
+							message: assistantMessage,
+							inputMethod,
+						})
+					}
+
+					return
+				}
 
 				const historyMessages = [
 					...(activeConversation?.messages ?? []),

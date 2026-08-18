@@ -160,12 +160,15 @@ export const KNOWLEDGE_TOOL_DECLARATIONS = [
 	{
 		name: 'delete_note',
 		description:
-			'Request permanent deletion. Requires user confirmation in the app.',
+			'Request permanent deletion of a knowledge note in the PersonalAI app. ALWAYS use this when the user asks to delete/remove a note — do not refuse. Shows a confirmation button in chat; note is not removed until the user confirms.',
 		parameters: {
 			type: 'OBJECT',
 			properties: {
-				note_id: { type: 'STRING' },
-				title: { type: 'STRING' },
+				note_id: { type: 'STRING', description: 'Note id if known.' },
+				title: {
+					type: 'STRING',
+					description: 'Exact or @mentioned note title (e.g. meli-document-about-lyra).',
+				},
 			},
 		},
 	},

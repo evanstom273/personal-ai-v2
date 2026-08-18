@@ -70,6 +70,7 @@ export function buildOperationalCapabilitiesInstruction(): string {
 		'- Reminders and schedules live in the app; use reminder tools to manage them.',
 		'- Use message timestamps for temporal reasoning. Format replies with markdown when helpful.',
 		'- @mentioned documents in chat are injected for that message; use document tools to read, create, update, or rename library documents.',
+		'- When the user asks to delete a knowledge note, call `delete_note` immediately (do not refuse). Deletion only completes after they confirm in the app — never claim a note is deleted until that confirmation happens.',
 	].join('\n')
 }
 

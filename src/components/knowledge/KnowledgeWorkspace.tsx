@@ -3,8 +3,10 @@ import {
 	CalendarDays,
 	FolderKanban,
 	FolderOpen,
+	MoreHorizontal,
 	Pin,
 	Star,
+	Trash2,
 	Upload,
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -12,6 +14,12 @@ import { Link } from 'react-router-dom'
 import { DocumentTemplatePicker } from '@/components/documents/DocumentTemplatePicker'
 import type { DocumentTemplate } from '@/data/documentTemplates'
 import { Button } from '@/components/ui/button'
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { useDualPaneNavigation } from '@/hooks/useDualPaneNavigation'
 import { useDocuments } from '@/hooks/useDocuments'
 import {
@@ -65,6 +73,7 @@ export function KnowledgeWorkspace({ query }: { query: string }) {
 		isLoading,
 		refreshDocuments,
 		createDocumentFromTemplate,
+		removeDocument,
 	} = useDocuments()
 	const [collections, setCollections] = useState<KnowledgeCollection[]>([])
 	const [activeNav, setActiveNav] = useState<KnowledgeNavKey>('all')
@@ -176,6 +185,14 @@ export function KnowledgeWorkspace({ query }: { query: string }) {
 	async function handleOpenToday(): Promise<void> {
 		const note = await openDailyNote()
 		openDocument(note.id)
+	}
+
+	async function handleDeleteNote(note: DocumentRecord): Promise<void> {
+		if (!window.confirm(`Delete "${note.title}" permanently? This cannot be undone.`)) {
+			return
+		}
+		await removeDocument(note.id)
+		await refreshDocuments()
 	}
 
 	async function togglePin(note: DocumentRecord): Promise<void> {
@@ -312,6 +329,7 @@ export function KnowledgeWorkspace({ query }: { query: string }) {
 								note={note}
 								onOpen={() => openDocument(note.id)}
 								onTogglePin={() => void togglePin(note)}
+								onDelete={() => void handleDeleteNote(note)}
 							/>
 						))}
 					</div>
@@ -325,10 +343,12 @@ function NoteListRow({
 	note,
 	onOpen,
 	onTogglePin,
+	onDelete,
 }: {
 	note: DocumentRecord
 	onOpen: () => void
 	onTogglePin: () => void
+	onDelete: () => void
 }) {
 	return (
 		<div className="flex items-center gap-3 surface-panel rounded-xl px-4 py-3">
@@ -348,9 +368,31 @@ function NoteListRow({
 					{note.tags?.length ? ` · ${note.tags.join(', ')}` : ''}
 				</p>
 			</button>
-			<Button type="button" variant="ghost" size="icon" onClick={onTogglePin}>
+			<Button
+				type="button"
+				variant="ghost"
+				size="icon"
+				onClick={onTogglePin}
+				title={note.pinned ? 'Unpin from Pinned list' : 'Pin to Pinned list'}
+				aria-label={note.pinned ? 'Unpin note' : 'Pin note'}
+			>
 				<Pin className={cn('h-4 w-4', note.pinned ? 'text-primary' : 'text-muted-foreground')} />
 			</Button>
+			<DropdownMenu>
+				<DropdownMenuTrigger
+					hideChevron
+					className="h-9 w-9 justify-center px-0"
+					aria-label="Note actions"
+				>
+					<MoreHorizontal className="h-4 w-4" />
+				</DropdownMenuTrigger>
+				<DropdownMenuContent align="end">
+					<DropdownMenuItem className="text-destructive" onSelect={onDelete}>
+						<Trash2 className="h-4 w-4" />
+						Delete
+					</DropdownMenuItem>
+				</DropdownMenuContent>
+			</DropdownMenu>
 		</div>
 	)
 }

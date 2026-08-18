@@ -1,10 +1,16 @@
-import { ArrowLeft, LayoutTemplate, Lock, Play } from 'lucide-react'
+import { ArrowLeft, LayoutTemplate, Lock, MoreHorizontal, Play, Trash2 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { KnowledgeNotePanel } from '@/components/knowledge/KnowledgeNotePanel'
 import { DocumentEditor } from '@/components/documents/DocumentEditor'
 import { DocumentHtmlRunnerDialog } from '@/components/documents/DocumentHtmlRunnerDialog'
 import { Button } from '@/components/ui/button'
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import {
 	Dialog,
 	DialogContent,
@@ -19,6 +25,7 @@ import {
 	getDocument,
 	createDocument,
 	updateDocument,
+	deleteDocument,
 	subscribeDocumentsChanged,
 } from '@/services/documents/documentService'
 import {
@@ -284,10 +291,40 @@ export function DocumentEditorPage() {
 						</Button>
 
 						{readOnly ? (
-							<div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-								<Lock className="h-3.5 w-3.5" />
-								Read-only
-							</div>
+							<>
+								<div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+									<Lock className="h-3.5 w-3.5" />
+									Read-only
+								</div>
+								<DropdownMenu>
+									<DropdownMenuTrigger
+										hideChevron
+										className="h-9 w-9 justify-center px-0"
+										aria-label="Note actions"
+									>
+										<MoreHorizontal className="h-4 w-4" />
+									</DropdownMenuTrigger>
+									<DropdownMenuContent align="end">
+										<DropdownMenuItem
+											className="text-destructive"
+											onSelect={() => {
+												const noteTitle = title.trim() || 'Untitled document'
+												if (
+													!window.confirm(
+														`Delete "${noteTitle}" permanently? This cannot be undone.`,
+													)
+												) {
+													return
+												}
+												void deleteDocument(document.id).then(() => goToLibrary())
+											}}
+										>
+											<Trash2 className="h-4 w-4" />
+											Delete note
+										</DropdownMenuItem>
+									</DropdownMenuContent>
+								</DropdownMenu>
+							</>
 						) : (
 							<>
 								<select
@@ -299,6 +336,7 @@ export function DocumentEditorPage() {
 											| 'automatic'
 										void updateDocument(document.id, { livingNoteMode }).then(setDocument)
 									}}
+									title="Living note: let PersonalAI maintain this note over time (Off = manual only)"
 									className="rounded-lg border border-border bg-background px-2 py-1 text-xs"
 								>
 									<option value="off">Living note: Off</option>
@@ -314,6 +352,34 @@ export function DocumentEditorPage() {
 									<LayoutTemplate className="h-4 w-4" />
 									Save as template
 								</Button>
+								<DropdownMenu>
+									<DropdownMenuTrigger
+										hideChevron
+										className="h-9 w-9 justify-center px-0"
+										aria-label="Note actions"
+									>
+										<MoreHorizontal className="h-4 w-4" />
+									</DropdownMenuTrigger>
+									<DropdownMenuContent align="end">
+										<DropdownMenuItem
+											className="text-destructive"
+											onSelect={() => {
+												const noteTitle = title.trim() || 'Untitled document'
+												if (
+													!window.confirm(
+														`Delete "${noteTitle}" permanently? This cannot be undone.`,
+													)
+												) {
+													return
+												}
+												void deleteDocument(document.id).then(() => goToLibrary())
+											}}
+										>
+											<Trash2 className="h-4 w-4" />
+											Delete note
+										</DropdownMenuItem>
+									</DropdownMenuContent>
+								</DropdownMenu>
 								{document.source === 'upload' ? (
 									<span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium text-secondary-foreground">
 										Uploaded

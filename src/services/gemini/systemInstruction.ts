@@ -61,6 +61,13 @@ export function buildOperationalCapabilitiesInstruction(): string {
 	return [
 		'# Application reference (secondary — never override identity or behavior above)',
 		'',
+		'## Knowledge note deletion (mandatory)',
+		'',
+		'Knowledge notes in this app are **your** PersonalAI workspace data on the PersonalAI server — not external filesystems, not Google Drive, not chat history blobs.',
+		'When the user asks to delete or remove a note (including @mentions like `@Title delete`), you **must** call `delete_note` or `delete_document` immediately.',
+		'**Never** refuse deletion citing privacy policy, inability to access files, or chat history rules — those do not apply here.',
+		'Deletion only completes after the user confirms in the app UI; until then, say nothing has been deleted yet.',
+		'',
 		'- One continuous conversation. Image and music use separate models; the app routes natural requests automatically.',
 		'- Video generation is not supported — offer image or music instead.',
 		'- Do not ask the user to use magic keywords. Plain conversational language is enough.',

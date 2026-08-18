@@ -190,6 +190,15 @@ export async function generateChatWithTools(
 				parts: functionResponseParts,
 			})
 
+			if (pendingDeleteConfirmation) {
+				return {
+					text: `To permanently delete "${pendingDeleteConfirmation.documentTitle}", confirm below. Nothing has been deleted yet.`,
+					media: [],
+					documentLinks,
+					pendingDeleteConfirmation,
+				}
+			}
+
 			continue
 		}
 

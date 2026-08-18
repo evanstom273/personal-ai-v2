@@ -1,6 +1,7 @@
 import mammoth from 'mammoth'
 import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist'
 import type { FileAttachment } from '../types/serverChat'
+import { extractPdfText as extractPdfTextFormatted } from '@/utils/pdfText'
 
 export async function readTextFile(file: File): Promise<string> {
 	return file.text()
@@ -60,8 +61,7 @@ export function isUploadableDocumentFile(file: File): boolean {
 
 export async function readUploadableDocumentContent(file: File): Promise<string> {
 	if (isPdfFile(file)) {
-		const { extractPdfText } = await import('@/utils/pdfText')
-		return extractPdfText(file)
+		return extractPdfTextFormatted(file)
 	}
 
 	if (
